@@ -1,0 +1,210 @@
+---
+- name: Set custom mode and reboot
+  block:
+  # ---step 1: preparing vcenter ---
+    - name: connect and set custom mode
+      esxi_cert_mgmt:
+        esxi_action: "custom_mode"
+        vcenter_server: "{{ vcenter_server }}"
+        vcenter_user: "{{ vcenter_user }}"
+        vcenter_password: "{{ vcenter_password }}"
+      register: custom_mode_out
+
+    - name: Restart all vCenter services after setting custom mode
+      ansible.windows.win_shell: |
+        service-control --stop --all && service-control --start --all
+      args:
+        executable: cmd
+      register: restart_services
+      changed_when: "'Successfully started all services' in restart_services.stdout"
+
+
+    - name: Wait for vCenter to go back online
+      ansible.builtin.wait_for:
+        host: "{{ vcenter_server }}"
+        port: 443
+        delay: 50
+        timeout: 1200
+      delegate_to: localhost
+      register: waitfor_vc
+
+    - name: Assert vCenter is online
+      ansible.builtin.assert:
+        that:
+          - waitfor_vc.state is defined
+          - waitfor_vc.state == "started"
+        fail_msg: "vCenter is NOT responding on port 443 after reboot."
+        success_msg: "vCenter is back online and responding on port 443."
+  rescue:
+    - name: Set error message
+      ansible.builtin.set_fact:
+        assert_msg: >
+          An error  has occurred while setting up custom mode.
+          {% if "custom mode" in ansible_failed_result.msg | d('') %}Fail to set up Custom mode{% endif %}
+          {% if "wait for" in ansible_failed_result.task | d('') %}Timeout waiting for vCenter to come online.{% endif %}
+
+    - name: RC in case of failure
+      ansible.builtin.include_role:
+        name: ansible_role_returncode
+      vars:
+        rc_support: account
+        rc_group: framework_playbook
+        rc_number: 2200
+        rc_message: "{{ assert_msg }}"
+
+    - name: Set exit flag
+      ansible.builtin.set_fact:
+        validate_rc_error: true
+      delegate_facts: true
+      delegate_to: localhost
+
+    - name: End all tasks for this host
+      ansible.builtin.meta: end_host
+
+
+    # Step 2, continue with the ESXi cert replacement
+- name: copy certificate and set maintenance mode
+  block:
+    - name: Copy ESXi certificate to host
+      ansible.windows.win_copy:
+        src: files/esxi_cert.pem
+        dest: "{{ esxi_cert_path }}"
+      register: esxi_cert_out
+
+    - name: set maintenance mode
+      esxi_cert_mgmt:
+        esxi_action: "maintenance"
+        esxi_host: "{{ esxi_host }}"
+        vcenter_server: "{{ vcenter_server }}"
+        vcenter_user: "{{ vcenter_user }}"
+        vcenter_password: "{{ vcenter_password }}"
+      register: maintenance_out
+
+    - name: Remove the ESXi host from vCenter
+      esxi_cert_mgmt:
+        esxi_action: "remove"
+        esxi_host: "{{ esxi_host }}"
+        vcenter_server: "{{ vcenter_server }}"
+        vcenter_user: "{{ vcenter_user }}"
+        vcenter_password: "{{ vcenter_password }}"
+      register: remove_out
+
+  rescue:
+    - name: Set error message
+      ansible.builtin.set_fact:
+        assert_msg: >
+          An error has occurred.
+          {% if "maintenance" in ansible_failed_result.msg | d('') %}Failed to set up maintenance mode{% endif %}
+          {% if "remove" in ansible_failed_result.msg | d('') %}Failed to remove ESXi host from vCenter{% endif %}
+
+    - name: RC in case of failure
+      ansible.builtin.include_role:
+        name: ansible_role_returncode
+      vars:
+        rc_support: account
+        rc_group: framework_playbook
+        rc_number: 2200
+        rc_message: "{{ assert_msg }}"
+
+    - name: Set exit flag
+      ansible.builtin.set_fact:
+        validate_rc_error: true
+      delegate_facts: true
+      delegate_to: localhost
+
+    - name: End all tasks for this host
+      ansible.builtin.meta: end_host
+
+- name: connect to esx, replace machine ssl and restart
+  block:
+    - name: replace machine ssl and restart
+      esxi_cert_mgmt:
+        esxi_action: "replace_cert"
+        esxi_cert_path: "{{ esxi_cert_path }}"
+        esxi_host: "{{ esxi_host }}"
+        esxi_user: "{{ esxi_user }}"
+        esxi_password: "{{ esxi_password }}"
+      register: replace_mssl_out
+
+    - name: Wait for ESXi host to go back online
+      ansible.builtin.wait_for:
+        host: "{{ esxi_host }}"
+        port: 443
+        delay: 30
+        timeout: 600
+      delegate_to: localhost
+      register: waitfor_esxi
+
+    - name: Assert ESXi is back online
+      ansible.builtin.assert:
+        that:
+          - waitfor_esxi.state is defined
+          - waitfor_esxi.state == "started"
+        fail_msg: "ESXi host is NOT responding on port 443 after cert change."
+        success_msg: "ESXi host is back online on port 443."
+  rescue:
+    - name: Set error message
+      ansible.builtin.set_fact:
+        assert_msg: >
+          An error has occurred.
+          {% if "connect" in ansible_failed_result.msg | d('') %}Failed to connect to ESXi host{% endif %}
+          {% if "replace" in ansible_failed_result.msg | d('') %}Failed to change Machine SSL certificate.{% endif %}
+
+    - name: RC in case of failure
+      ansible.builtin.include_role:
+        name: ansible_role_returncode
+      vars:
+        rc_support: account
+        rc_group: framework_playbook
+        rc_number: 2200
+        rc_message: "{{ assert_msg }}"
+
+    - name: Set exit flag
+      ansible.builtin.set_fact:
+        validate_rc_error: true
+      delegate_facts: true
+      delegate_to: localhost
+
+    - name: End all tasks for this host
+      ansible.builtin.meta: end_host
+
+  # --- Step 3, re-add ESXi server to the vcenter
+
+- name: re-add the ESXi to the vCenter
+  block:
+    - name: re-add the esx server
+      esxi_cert_mgmt:
+        esxi_action: "re-add"
+        vcenter_server: "{{ vcenter_server }}"
+        vcenter_user: "{{ vcenter_user }}"
+        vcenter_password: "{{ vcenter_password }}"
+        esxi_host: "{{ esxi_host }}"
+        esxi_user: "{{ esxi_user }}"
+        esxi_password: "{{ esxi_password }}"
+        esxi_location: "{{ datacenter_location }}"
+      register: esxi_add_out
+
+  rescue:
+    - name: Set error message
+      ansible.builtin.set_fact:
+        assert_msg: >
+          An error has occurred.
+          {% if "re-add" in ansible_failed_result.msg | d('') %}Failed to re-add the ESXi to the vCenter{% endif %}
+
+    - name: RC in case of failure
+      ansible.builtin.include_role:
+        name: ansible_role_returncode
+      vars:
+        rc_support: account
+        rc_group: framework_playbook
+        rc_number: 2200
+        rc_message: "{{ assert_msg }}"
+
+    - name: Set exit flag
+      ansible.builtin.set_fact:
+        validate_rc_error: true
+      delegate_facts: true
+      delegate_to: localhost
+
+    - name: End all tasks for this host
+      ansible.builtin.meta: end_host
