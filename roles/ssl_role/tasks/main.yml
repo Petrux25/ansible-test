@@ -1,0 +1,130 @@
+---
+- name: Copy the new certificate
+  win_copy:
+    src: \\192.168.100.100\share\Certificates\{{ cert_name }}
+    dest: C:\temp\
+    remote_src: true
+  become: true
+  become_user: system
+
+- name: Read the certificate that is not password protected
+  iis_handler:
+    iis_action: "read_cert"
+    cert_name: c:\temp\{{ cert_name }}
+              
+  register: cert_info_nopwd
+  when: cert_key is not defined
+
+- name: Read the certificate that is password protected
+  iis_handler:
+    iis_action: "read_cert"
+    cert_name: c:\temp\{{ cert_name }}
+    cert_key: "{{ cert_key }}"
+              
+  register: cert_info_pwd
+  when: cert_key is defined
+
+- name: Register 'Issued to' into a variable when a certificate is not password protected
+  set_fact:
+    site_name: "{{ cert_info_nopwd.data }}"
+  when: cert_key is not defined
+
+- name: Register 'Issued to' into a variable when a certificate is password protected
+  set_fact:
+    site_name: "{{ cert_info_pwd.data }}"
+  when: cert_key is defined
+    
+- name: Print 'Issued to'
+  debug:
+    msg: "The certificate is issued to: {{ site_name }}"
+
+- name: Get all websites from IIS
+  iis_handler:
+    iis_action: "read_sites"
+  register: iis_sites
+
+- name: Parse the output
+  set_fact:
+    sites: "{{ iis_sites.site_data_json }}"
+
+- name: Check saved variable  
+  debug:
+    var: sites
+
+- name: Check saved variable  
+  debug:
+    msg: "{{ sites | type_debug }}"
+
+- name: Find the site with the specified name if there are many sites
+  set_fact:
+    found_site: "{{ item.Site }}"
+    iis_site: "{{ item.Site }}"
+    found_port: "{{ item.Port }}"
+  when: item.Binding == site_name and sites | type_debug == "list"
+  with_items: "{{ sites }}"
+
+
+- name: Find the correct site if there is only one site
+  set_fact:
+    found_site: "{{ sites.Binding }}"
+    iis_site: "{{ sites.Site }}"
+    found_port: "{{ sites.Port }}"
+  when: sites | type_debug == "dict" and sites.Binding == site_name
+
+- name: Print the found site
+  debug:
+    msg: "The site with the name '{{ site_name }}' is '{{ iis_site }}'"
+  when: found_site is defined
+
+- name: Import a certificate that is not password protected
+  ansible.windows.win_certificate_store:
+    path: c:\temp\{{ cert_name }}
+    store_location: LocalMachine
+    state: present
+    key_exportable: true
+  become: true
+  become_method: runas
+  when: cert_key is undefined
+  register: imported_certificate_nopw
+
+- name: Import pfx certificate that is password protected
+  ansible.windows.win_certificate_store:
+    path: c:\temp\{{ cert_name }}        
+    state: present
+    key_exportable: true
+    password: "{{ cert_key }}"
+  become: true
+  become_method: runas
+  when: cert_key is defined
+  register: imported_certificate_pw
+
+- name: Set certificate thumbprint if its password protected
+  set_fact:
+    cert_thumb: "{{ imported_certificate_pw.thumbprints[1] }}"
+  when: imported_certificate_pw is defined and cert_key is defined
+
+- name: Set certificate thumbprint if it is not password protected
+  set_fact:
+    cert_thumb: "{{ imported_certificate_nopw.thumbprints[0] }}"
+  when: imported_certificate_nopw is defined and cert_key is not defined
+
+- name: Make the certificate usable by IIS
+  iis_handler:
+    iis_action: "complete"
+    cert_name: c:\temp\{{ cert_name }}
+    friendly_name: "{{ site_name }}"
+  when: found_site is defined and cert_key is not defined
+    
+- name: Bind Certificate to defined website
+  iis_handler:
+    iis_action: "import"
+    site_name: "{{ iis_site }}"
+    cert_id: "{{ cert_thumb }}"
+  when: site_name is defined
+  register: import_certificate_output
+
+- name: Restart "{{ iis_site }}"
+  community.windows.win_iis_website:
+    name: "{{ iis_site }}"
+    state: restarted
+
