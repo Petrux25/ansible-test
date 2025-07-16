@@ -1,7 +1,7 @@
 - name: Install root CA and change machine SSL certificate
   hosts: all
   strategy: free
-  gather_facts: true
+  gather_facts: false
   roles:
     - ssl_role_vcenter
   vars:
