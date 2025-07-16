@@ -61,7 +61,6 @@ try {
 }
 catch {
     update-error "Error in vCenter action execution"
-    Exit-Json $module
 }
 finally {
     if ($VIServer) {

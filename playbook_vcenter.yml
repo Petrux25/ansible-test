@@ -1,9 +1,19 @@
 - name: Install root CA and change machine SSL certificate
-  hosts: all
+  hosts: all,!localhost
   strategy: free
   gather_facts: false
-
   tasks:
+    - name: Test server connectivity
+      ansible.windows.win_ping:
+      register: ping_status
+      ignore_unreachable: true
+
+    - name: Check if the server is online or not
+      ansible.builtin.assert:
+        that:
+          - ping_status.unreachable is undefined
+        quiet: true
+        
     - name: run role
       ansible.builtin.include_role:
         name: ssl_role_vcenter
