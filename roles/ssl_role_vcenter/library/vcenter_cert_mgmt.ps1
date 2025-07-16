@@ -5,13 +5,13 @@
 $ErrorActionPreference = "Stop"
 
 # --- Read and parse incoming parameters ---
-$params = Parse-Args $args -supports_check_mode $true
 $vcenter_action    = Get-AnsibleParam -obj $params -name "vcenter_action" -type "str" -failifempty $true
-$vcenter_server    = Get-AnsibleParam -obj $params -name "vcenter_server" -type "str" -failifempty ($vcenter_action -ne "read_cert")
-$vcenter_user      = Get-AnsibleParam -obj $params -name "vcenter_user" -type "str" -failifempty ($vcenter_action -ne "read_cert")
-$vcenter_password  = Get-AnsibleParam -obj $params -name "vcenter_password" -type "str" -secret $true -failifempty ($vcenter_action -ne "read_cert")
+$vcenter_server    = Get-AnsibleParam -obj $params -name "vcenter_server" -type "str" -failifempty $true
+$vcenter_user      = Get-AnsibleParam -obj $params -name "vcenter_user" -type "str" -failifempty $true
+$vcenter_password  = Get-AnsibleParam -obj $params -name "vcenter_password" -type "str" -secret $true -failifempty $true
 $ca_cert_path      = Get-AnsibleParam -obj $params -name "ca_cert_path" -type "str" -failifempty ($vcenter_action -eq "add_CA")
-$machine_ssl_cert_path = Get-AnsibleParam -obj $params -name "machine_ssl_cert_path" -type "str" -failifempty ($vcenter_action -eq "change_certificate")
+$machine_ssl_cert_path = Get-AnsibleParam -obj $params -name "machine_ssl_cert_path" -type "str" -failifempty ($vcenter_action -eq "replace_certificate")
+
 
 # --- Result object ---
 $module = New-Object psobject @{
