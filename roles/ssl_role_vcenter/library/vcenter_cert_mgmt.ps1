@@ -5,6 +5,7 @@
 $ErrorActionPreference = "Stop"
 
 # --- Read and parse incoming parameters ---
+$params           = Parse-Args $args -supports_check_mode $true
 $vcenter_action    = Get-AnsibleParam -obj $params -name "vcenter_action" -type "str" -failifempty $true
 $vcenter_server    = Get-AnsibleParam -obj $params -name "vcenter_server" -type "str" -failifempty $true
 $vcenter_user      = Get-AnsibleParam -obj $params -name "vcenter_user" -type "str" -failifempty $true
