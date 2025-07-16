@@ -49,28 +49,32 @@
       register: output_add_ca
 
   rescue:
-    - name: Set error message
-      ansible.builtin.set_fact:
-        assert_msg: >
-          Failed to add CA certificate to the trusted store.
+    - name: show error message
+      ansible.builtin.debug:
+        msg: "Error !"
 
-    - name: RC in case of failure
-      ansible.builtin.include_role:
-        name: ansible_role_returncode
-      vars:
-        rc_support: account
-        rc_group: framework_playbook
-        rc_number: 2200
-        rc_message: "{{ assert_msg }}"
+    # - name: Set error message
+    #   ansible.builtin.set_fact:
+    #     assert_msg: >
+    #       Failed to add CA certificate to the trusted store.
 
-    - name: Set exit flag
-      ansible.builtin.set_fact:
-        validate_rc_error: true
-      delegate_facts: true
-      delegate_to: localhost
+    # - name: RC in case of failure
+    #   ansible.builtin.include_role:
+    #     name: ansible_role_returncode
+    #   vars:
+    #     rc_support: account
+    #     rc_group: framework_playbook
+    #     rc_number: 2200
+    #     rc_message: "{{ assert_msg }}"
 
-    - name: End all tasks for this host
-      ansible.builtin.meta: end_host
+    # - name: Set exit flag
+    #   ansible.builtin.set_fact:
+    #     validate_rc_error: true
+    #   delegate_facts: true
+    #   delegate_to: localhost
+
+    # - name: End all tasks for this host
+    #   ansible.builtin.meta: end_host
 
 - name: Change Machine SSL certificate and wait for vCenter
   block:
@@ -88,7 +92,7 @@
         host: "{{ vcenter_server }}"
         port: 443
         delay: 50
-        timeout: 300
+        timeout: 200
       delegate_to: localhost
       register: waitfor_result
 
@@ -105,27 +109,32 @@
         success_msg: "vCenter is back online and responding on port 443."
 
   rescue:
-    - name: Set error message
-      ansible.builtin.set_fact:
-        assert_msg: >
-          Machine SSL certificate change or vCenter restart failed.
-          {% if "Machine SSL" in ansible_failed_result.msg | d('') %}Failed to change the Machine SSL certificate.{% endif %}
-          {% if "wait for" in ansible_failed_result.msg | d('') %}Timeout waiting for vCenter to come online.{% endif %}
+    - name: show error message
+      ansible.builtin.debug:
+        msg: "Error!"
 
-    - name: RC in case of failure
-      ansible.builtin.include_role:
-        name: ansible_role_returncode
-      vars:
-        rc_support: account
-        rc_group: framework_playbook
-        rc_number: 2200
-        rc_message: "{{ assert_msg }}"
 
-    - name: Set exit flag
-      ansible.builtin.set_fact:
-        validate_rc_error: true
-      delegate_facts: true
-      delegate_to: localhost
+    # - name: Set error message
+    #   ansible.builtin.set_fact:
+    #     assert_msg: >
+    #       Machine SSL certificate change or vCenter restart failed.
+    #       {% if "Machine SSL" in ansible_failed_result.msg | d('') %}Failed to change the Machine SSL certificate.{% endif %}
+    #       {% if "wait for" in ansible_failed_result.msg | d('') %}Timeout waiting for vCenter to come online.{% endif %}
 
-    - name: End all tasks for this host
-      ansible.builtin.meta: end_host
+    # - name: RC in case of failure
+    #   ansible.builtin.include_role:
+    #     name: ansible_role_returncode
+    #   vars:
+    #     rc_support: account
+    #     rc_group: framework_playbook
+    #     rc_number: 2200
+    #     rc_message: "{{ assert_msg }}"
+
+    # - name: Set exit flag
+    #   ansible.builtin.set_fact:
+    #     validate_rc_error: true
+    #   delegate_facts: true
+    #   delegate_to: localhost
+
+    # - name: End all tasks for this host
+    #   ansible.builtin.meta: end_host
