@@ -32,80 +32,35 @@ function update-error([string] $description) {
 }
 
 $VIServer = $null
-
 try {
-    if ($vcenter_action -ne "read_cert") {
-        try {
-            Import-Module VMware.PowerCLI -ErrorAction Stop
-        } catch {
-            update-error "Failed to import VMware.PowerCLI."
-            Exit-Json $module
-        }
-        Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false | Out-Null
+    Import-Module VMware.PowerCLI -ErrorAction Stop
+    Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false | Out-Null
 
-        $module.msg += "Connecting to vCenter Server '$vcenter_server'... "
-        $VIServer = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop
-        $module.msg += "Connected. "
-    }
+    # 1. Conectarse SIEMPRE al principio
+    $VIServer = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop
+    $module.msg += "Connected to vCenter. "
 
-    # --- Actions ---
-    if ($vcenter_action -eq "connect") {
-        $module.msg += "vCenter connection established. "
-        $module.changed = $false
+    # 2. Acción
+    if ($vcenter_action -eq "add_CA") {
+        $trustedCertChain = Get-Content $ca_cert_path -Raw
+        Add-VITrustedCertificate -PemCertificateOrChain $trustedCertChain -VCenterOnly
+        $module.msg += "CA added to vCenter trusted store. "
+        $module.changed = $true
         $module.status = "Success"
     }
-
-    elseif ($vcenter_action -eq "add_CA") {
-        try {
-            $module.msg += "Adding CA from '$ca_cert_path'... "
-            $trustedCertChain = Get-Content $ca_cert_path -Raw
-            Add-VITrustedCertificate -PemCertificateOrChain $trustedCertChain -VCenterOnly
-            $module.msg += "CA added to vCenter trusted store. "
-            $module.changed = $true
-            $module.status = "Success"
-        }
-        catch {
-            update-error "Failed to add CA certificate."
-            Exit-Json $module
-        }
-    }
-
     elseif ($vcenter_action -eq "replace_certificate") {
-        try {
-            $module.msg += "Replacing vCenter Machine SSL certificate from '$machine_ssl_cert_path'... "
-            $vcCert = Get-Content $machine_ssl_cert_path -Raw
-            Set-VIMachineCertificate -PemCertificate $vcCert
-            $module.msg += "Machine SSL certificate replaced successfully. A reboot may be required. "
-            $module.changed = $true
-            $module.status = "Success"
-        }
-        catch {
-            update-error "Failed to change vCenter Machine SSL certificate."
-            Exit-Json $module
-        }
+        $vcCert = Get-Content $machine_ssl_cert_path -Raw
+        Set-VIMachineCertificate -PemCertificate $vcCert
+        $module.msg += "Machine SSL certificate replaced successfully. "
+        $module.changed = $true
+        $module.status = "Success"
     }
-
-    elseif ($vcenter_action -eq "read_cert") {
-        try {
-            $module.msg += "Reading vCenter certificate info... "
-            $certs = Get-VIMachineCertificate -VCenterOnly
-            $module.data = $certs
-            $module.changed = $false
-            $module.status = "Success"
-            $module.msg += "Certificate info read successfully. "
-        }
-        catch {
-            update-error "Failed to read vCenter certificate."
-            Exit-Json $module
-        }
-    }
-
     else {
         update-error "Unsupported vcenter_action: '$vcenter_action'"
     }
 }
 catch {
-    update-error "An unexpected error occurred. $($_.Exception.Message) ScriptStackTrace: $($_.ScriptStackTrace)"
+    update-error "Error in vCenter action execution"
     Exit-Json $module
 }
 finally {
@@ -113,9 +68,10 @@ finally {
         try {
             Disconnect-VIServer -Server $VIServer -Confirm:$false -ErrorAction SilentlyContinue
             $module.msg += "Disconnected from vCenter."
-        } catch {Exit-Json $module}
+        } catch { }
     }
 }
+
 
 # --- Ensure msg is never empty ---
 if (-not $module.msg -or $module.msg.Trim() -eq "") {
