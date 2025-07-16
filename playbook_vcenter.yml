@@ -2,11 +2,14 @@
   hosts: all
   strategy: free
   gather_facts: false
-  roles:
-    - ssl_role_vcenter
-  vars:
-    vcenter_server: "vcenter01.local.com"
-    vcenter_user: "administrator@vsphere.local"
-    vcenter_password: "!Passw0rd"
-    ca_cert_path: "C:\\Users\\diego.velasquez_rem\\Desktop\\ansible-test\\ca_root.cer"
-    machine_ssl_cert_path: "C:\\Users\\diego.velasquez_rem\\Desktop\\ansible-test\\certnew.cer"
+
+  tasks:
+    - name: run role
+      ansible.builtin.include_role:
+        name: ssl_role_vcenter
+      vars:
+        vcenter_server: "vcenter01.local.com"
+        vcenter_user: "administrator@vsphere.local"
+        vcenter_password: "!Passw0rd"
+        ca_cert_path: "C:\\Users\\diego.velasquez_rem\\Desktop\\ansible-test\\ca_root.cer"
+        machine_ssl_cert_path: "C:\\Users\\diego.velasquez_rem\\Desktop\\ansible-test\\certnew.cer"

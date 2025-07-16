@@ -52,6 +52,9 @@
     - name: show error message
       ansible.builtin.debug:
         msg: "Error !"
+    - name: fail
+      ansible.builtin.fail:
+        msg: "Critical error"
 
     # - name: Set error message
     #   ansible.builtin.set_fact:
@@ -112,6 +115,9 @@
     - name: show error message
       ansible.builtin.debug:
         msg: "Error!"
+    - name: fail
+      ansible.builtin.debug:
+        msg: "critical error"
 
 
     # - name: Set error message
