@@ -40,12 +40,27 @@ $module.data = $variables
 
 $VIServer = $null
 try {
-    $module.msg = "Entrando en el try"
+    $module.msg += "Entrando en el try"
+
+    $module.msg += "Probando conectar con vcenter"
+
+    # 1. Conectarse SIEMPRE al principio
+    $VIServer = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop -Confirm:$false
+    $module.msg += "Connected to vCenter. "
+
 
     Exit-Json $module
 }
 catch {
     update-error "Error in vCenter action execution"
+}
+finally {
+    if ($VIServer) {
+        try {
+            Disconnect-VIServer -Server $VIServer -Confirm:$false -ErrorAction SilentlyContinue
+            $module.msg += "Disconnected from vCenter."
+        } catch { }
+    }
 }
 
 if (-not $module.msg -or $module.msg.Trim() -eq "") {
