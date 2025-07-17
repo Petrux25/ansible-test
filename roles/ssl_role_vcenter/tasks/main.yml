@@ -54,7 +54,7 @@
         msg: "Error !"
     - name: fail
       ansible.builtin.fail:
-        msg: "Critical error"
+        msg: "Critical error 1"
 
     # - name: Set error message
     #   ansible.builtin.set_fact:
@@ -117,7 +117,7 @@
         msg: "Error!"
     - name: fail
       ansible.builtin.debug:
-        msg: "critical error"
+        msg: "critical error 2"
 
 
     # - name: Set error message
