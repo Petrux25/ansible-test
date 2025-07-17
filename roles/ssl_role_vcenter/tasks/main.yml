@@ -1,41 +1,7 @@
 ---
-# - name: Copy certificates to host
-#   block:
-#     - name: Copy CA root certificate to host
-#       ansible.windows.win_copy:
-#         src: files/ca_root.pem
-#         dest: "{{ ca_cert_path }}"
-#       register: output_ca
-
-#     - name: Copy new Machine SSL cert to host
-#       ansible.windows.win_copy:
-#         src: files/certnew.cer
-#         dest: "{{ machine_ssl_cert_path }}"
-#       register: output_cert
-
-#   rescue:
-#     - name: Set error message
-#       ansible.builtin.set_fact:
-#         assert_msg: >
-#           Failed to copy certificates.
-
-#     - name: RC in case of failure
-#       ansible.builtin.include_role:
-#         name: ansible_role_returncode
-#       vars:
-#         rc_support: account
-#         rc_group: framework_playbook
-#         rc_number: 2200
-#         rc_message: "{{ assert_msg }}"
-
-#     - name: Set exit flag
-#       ansible.builtin.set_fact:
-#         validate_rc_error: true
-#       delegate_facts: true
-#       delegate_to: localhost
-
-#     - name: End all tasks for this host
-#       ansible.builtin.meta: end_host
+- name: Show variables
+  ansible.builtin.debug:
+    msg: "{{ ca_cert_path }} {{ vcenter_server }} {{ vcenter_user }}"
 
 - name: Connect to vCenter and add CA cert
   block:

@@ -1,7 +1,0 @@
----
-- name: Certificates testing
-  hosts: all
-  strategy: free
-  gather_facts: true
-  roles:
-    - ssl_role
