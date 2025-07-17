@@ -38,20 +38,20 @@ try {
     Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false | Out-Null
 
     # 1. Conectarse SIEMPRE al principio
-    $VIServer = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop
+    $VIServer = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop -Confirm:$false
     $module.msg += "Connected to vCenter. "
 
     # 2. Acción
     if ($vcenter_action -eq "add_CA") {
         $trustedCertChain = Get-Content $ca_cert_path -Raw
-        Add-VITrustedCertificate -PemCertificateOrChain $trustedCertChain -VCenterOnly
+        Add-VITrustedCertificate -PemCertificateOrChain $trustedCertChain -VCenterOnly -Confirm:$false
         $module.msg += "CA added to vCenter trusted store. "
         $module.changed = $true
         $module.status = "Success"
     }
     elseif ($vcenter_action -eq "replace_certificate") {
         $vcCert = Get-Content $machine_ssl_cert_path -Raw
-        Set-VIMachineCertificate -PemCertificate $vcCert
+        Set-VIMachineCertificate -PemCertificate $vcCert -Confirm:$false
         $module.msg += "Machine SSL certificate replaced successfully. "
         $module.changed = $true
         $module.status = "Success"
