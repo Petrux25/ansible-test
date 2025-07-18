@@ -49,6 +49,15 @@ try {
     $module.msg += "Connected to vCenter. "
 
 
+    $module.msg += "Intentando agregar CA root"
+
+    if ($vcenter_action -eq "add_CA") {
+        $trustedCertChain = Get-Content $ca_cert_path -Raw
+        Add-VITrustedCertificate -PemCertificateOrChain $trustedCertChain -VCenterOnly -Confirm:$false
+        $module.msg += "CA added to vCenter trusted store. "
+        $module.changed = $true
+        $module.status = "Success"
+    }
     Exit-Json $module
 }
 catch {

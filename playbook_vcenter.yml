@@ -19,5 +19,5 @@
         name: ssl_role_vcenter
       vars:
         vcenter_server: "vcenter01.local.com"
-        ca_cert_path: "C:\\Users\\diego.velasquez_rem\\Desktop\\ansible-test\\ca_root.cer"
+        ca_cert_path: "C:\\Users\\diego.velasquez_rem\\Desktop\\ansible-test\\ca_root_pem.pem"
         machine_ssl_cert_path: "C:\\Users\\diego.velasquez_rem\\Desktop\\ansible-test\\certnew.cer"
