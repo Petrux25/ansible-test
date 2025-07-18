@@ -42,17 +42,18 @@ $VIServer = $null
 try {
     $module.msg += "Entrando en el try"
 
-    $module.msg += "Probando conectar con vcenter"
+    $module.msg += "Probando importar modulos"
 
-    # 1. Conectarse SIEMPRE al principio
-    $VIServer = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop -Confirm:$false
-    $module.msg += "Connected to vCenter. "
+    Install-Module -Name VCF.PowerCLI 
+    Install-Module -Name VMware.VimAutomation.core 
+    $module.msg += "Modulos importados "
 
 
     Exit-Json $module
 }
 catch {
     update-error "Error in vCenter action execution"
+    Exit-Json $module 
 }
 finally {
     if ($VIServer) {
