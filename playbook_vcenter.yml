@@ -3,7 +3,7 @@
   strategy: free
   gather_facts: false
   become: true
-  #become_method: runas
+  become_method: runas
   #become_user: adm_win_acc
   tasks:
     - name: Test server connectivity
