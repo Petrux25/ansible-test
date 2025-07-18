@@ -35,7 +35,7 @@ function update-error([string] $description) {
 $VIServer = $null
 try {
     Import-Module VMware.PowerCLI -ErrorAction Stop
-    Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false | Out-Null
+    Set-PowerCLIConfiguration -InvalidCertificateAction Fail -Confirm:$false | Out-Null
 
     # 1. Conectarse SIEMPRE al principio
     $VIServer = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop -Confirm:$false
