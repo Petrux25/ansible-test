@@ -45,7 +45,7 @@ try {
     $module.msg += "Probando conectar con vcenter"
 
     # 1. Conectarse SIEMPRE al principio
-    $VIServer = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop -Confirm:$false
+    $VIServer = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop 
     $module.msg += "Connected to vCenter. "
 
 
