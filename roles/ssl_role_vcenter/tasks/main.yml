@@ -12,8 +12,6 @@
         vcenter_server: "{{ vcenter_server }}"
         vcenter_user: "{{ vcenter_user }}"
         vcenter_password: "{{ vcenter_password }}"
-      become: true
-      become_method: runas
       register: output_add_ca
 
   rescue:

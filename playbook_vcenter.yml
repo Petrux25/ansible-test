@@ -2,9 +2,9 @@
   hosts: all,!localhost
   strategy: free
   gather_facts: false
-  #become: yes
-  #become_method: runas
-  #become_user: Administrator
+  become: true
+  become_method: runas
+  become_user: adm_win_acc
   tasks:
     - name: Test server connectivity
       ansible.windows.win_ping:
