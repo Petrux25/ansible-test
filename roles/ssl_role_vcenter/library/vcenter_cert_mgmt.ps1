@@ -57,8 +57,8 @@ try {
         $module.msg += "CA added to vCenter trusted store. "
         $module.changed = $true
         $module.status = "Success"
+        Exit-Json $module
     }
-    Exit-Json $module
 
     elseif ($vcenter_action -eq "replace_certificate") {
         $vcCert = Get-Content $machine_ssl_cert_path -Raw
@@ -66,10 +66,12 @@ try {
         $module.msg += "Machine SSL certificate replaced successfully. "
         $module.changed = $true
         $module.status = "Success"
+        Exit-Json $module
     }
     Exit-Json $module
     else {
-        update-error "Unsupported vcenter_action: '$vcenter_action'"
+        update-error "Unsupported vcenter_action: " '$vcenter_action' "
+        Exit-Json $module
     }
 
 }
