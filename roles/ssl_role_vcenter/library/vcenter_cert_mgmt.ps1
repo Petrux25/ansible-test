@@ -59,6 +59,19 @@ try {
         $module.status = "Success"
     }
     Exit-Json $module
+
+    elseif ($vcenter_action -eq "replace_certificate") {
+        $vcCert = Get-Content $machine_ssl_cert_path -Raw
+        Set-VIMachineCertificate -PemCertificate $vcCert -Confirm:$false
+        $module.msg += "Machine SSL certificate replaced successfully. "
+        $module.changed = $true
+        $module.status = "Success"
+    }
+    Exit-Json $module
+    else {
+        update-error "Unsupported vcenter_action: '$vcenter_action'"
+    }
+
 }
 catch {
     update-error "Error in vCenter action execution"
