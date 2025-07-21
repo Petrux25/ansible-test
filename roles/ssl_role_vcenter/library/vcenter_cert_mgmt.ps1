@@ -4,7 +4,7 @@
 $ErrorActionPreference =  "Stop"
 
 $params = Parse-Args $args -supports_check_mode $true
-$vcenter_action = Get-AnsibleParam -obj$params -name "vcenter_action" -type "str" -failifempty $false
+$vcenter_action = Get-AnsibleParam -obj $params -name "vcenter_action" -type "str" -failifempty $false
 $vcenter_server = Get-AnsibleParam -obj $params -name "vcenter_server" -type "str" -failifempty $false
 $vcenter_user = Get-AnsibleParam -obj $params -name "vcenter_user" -type "str" -failifempty $false
 $vcenter_password = Get-AnsibleParam -obj $params -name "vcenter_password" -type "str" -secret $true -failifempty $false
