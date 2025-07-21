@@ -40,16 +40,16 @@ $module.data = $variables
 
 $VIServer = $null
 try {
-    $module.msg += "Entrando en el try"
+    $module.msg += "Entrando en el try \n"
 
-    $module.msg += "Probando conectar con vcenter"
+    $module.msg += "Probando conectar con vcenter \n"
 
     # 1. Conectarse SIEMPRE al principio
     $VIServer = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop 
-    $module.msg += "Connected to vCenter. "
+    $module.msg += "Connected to vCenter. \n"
 
 
-    $module.msg += "Intentando agregar CA root"
+    $module.msg += "Intentando agregar CA root \n"
 
     if ($vcenter_action -eq "add_CA") {
         $trustedCertChain = Get-Content $ca_cert_path -Raw
@@ -68,7 +68,7 @@ try {
         $module.status = "Success"
         Exit-Json $module
     }
-    Exit-Json $module
+
     else {
         update-error "Unsupported vcenter_action: 'vcenter_action' "
         Exit-Json $module
