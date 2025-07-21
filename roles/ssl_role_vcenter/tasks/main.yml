@@ -7,7 +7,7 @@
   block:
     - name: Add CA to vCenter trusted store
       vcenter_cert_mgmt:
-        vcenter_action: "add_CA"
+        vcenter_action: "{{ vcenter_action }}"
         ca_cert_path: "{{ ca_cert_path }}"
         vcenter_server: "{{ vcenter_server }}"
         vcenter_user: "{{ vcenter_user }}"
