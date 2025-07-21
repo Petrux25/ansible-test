@@ -1,7 +1,7 @@
 ---
 - name: Show variables
   ansible.builtin.debug:
-    msg: "{{ ca_cert_path }} {{ vcenter_server }} {{ vcenter_user }}"
+    msg: "{{ ca_cert_path }} {{ vcenter_server }} {{ vcenter_user }} {{ machine_ssl_cert_path }}"
 
 - name: Connect to vCenter and add CA cert
   block:
