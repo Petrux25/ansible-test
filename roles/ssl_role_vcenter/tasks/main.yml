@@ -7,7 +7,7 @@
   block:
     - name: Add CA to vCenter trusted store
       vcenter_cert_mgmt:
-        vcenter_action: "{{ vcenter_action }}"
+        vcenter_action: "add_CA"
         ca_cert_path: "{{ ca_cert_path }}"
         vcenter_server: "{{ vcenter_server }}"
         vcenter_user: "{{ vcenter_user }}"
@@ -49,7 +49,7 @@
   block:
     - name: Change vCenter Machine SSL certificate
       vcenter_cert_mgmt:
-        vcenter_action: "{{ vcenter_action }}"
+        vcenter_action: "replace_certificate"
         machine_ssl_cert_path: "{{ machine_ssl_cert_path }}"
         vcenter_server: "{{ vcenter_server }}"
         vcenter_user: "{{ vcenter_user }}"
