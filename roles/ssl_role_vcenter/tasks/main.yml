@@ -57,27 +57,6 @@
         vcenter_password: "{{ vcenter_password }}"
       register: output_cert_mgmt
 
-    - name: Wait for vCenter to be back online after cert change
-      ansible.builtin.wait_for:
-        host: "{{ vcenter_server }}"
-        port: 443
-        delay: 50
-        timeout: 200
-      delegate_to: localhost
-      register: waitfor_result
-
-    - name: Show wait_for result (for troubleshooting)
-      ansible.builtin.debug:
-        var: waitfor_result
-
-    - name: Assert vCenter is back online on port 443
-      ansible.builtin.assert:
-        that:
-          - waitfor_result.state is defined
-          - waitfor_result.state == "started"
-        fail_msg: "vCenter is NOT responding on port 443 after certificate change."
-        success_msg: "vCenter is back online and responding on port 443."
-
   rescue:
     - name: show error message
       ansible.builtin.debug:
