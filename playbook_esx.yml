@@ -1,17 +1,33 @@
 ---
-- name: Set custom mode, reboot vCenter, and manage ESXi certificate
-  hosts: vcenter_host
+- name: Set custom mode, reboot vCenter and manage ESXi certificate
+  hosts: all,!localhost
+  strategy: free
   gather_facts: false
-  roles:
-    - ssl_role_esxi
-  vars:
-    vcenter_server: "vcenter01.local.com"
-    vcenter_user: "administrator@vsphere.local"
-    vcenter_password: "!Passw0rd"
-    script_dir: "C:\\temp"
-    esxi_host: "esx010.local.com"
-    esxi_user: "root"
-    esxi_password: "!Passw0rd"
-    esxi_cert_path: "C:\\Temp\\esxi_cert.pem"
-    datacenter_location: "My Datacenter"
- 
+  become: true
+  become_method: runas
+  become_user: localop
+  tasks:
+    - name: Test server connectivity
+      ansible.windows.win_ping:
+      register: ping_status
+      ignore_unreachable: true
+      
+    - name: Check if the server is online or not
+      ansible.builtin.assert:
+        that:
+          - ping_status.unreachable is undefined
+        quiet: true
+
+    - name: run role
+      ansible.builtin.include_role:
+        name: ssl_role_esxi
+      vars:
+        vcenter_server: "vcenter01.local.com"
+        vcenter_server: "vcenter01.local.com"
+        vcenter_user: "administrator@vsphere.local"
+        vcenter_password: "!Passw0rd"
+        esxi_host: "esx010.local.com"
+        esxi_user: "root"
+        esxi_password: "!Passw0rd"
+        esxi_cert_path: "C:\\Temp\\esxi_cert.pem"
+        datacenter_location: "My Datacenter"
