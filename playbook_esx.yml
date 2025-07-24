@@ -1,4 +1,3 @@
----
 - name: Set custom mode, reboot vCenter and manage ESXi certificate
   hosts: all,!localhost
   strategy: free
