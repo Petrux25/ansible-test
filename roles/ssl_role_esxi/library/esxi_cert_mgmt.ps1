@@ -1,6 +1,17 @@
 #Requires -Module Ansible.ModuleUtils.Legacy
 #Requires -Module VMware.PowerCLI
 
+
+# Result object 
+$module = New-Object psobject @{
+    result  = ""
+    changed = $false
+    msg     = ""
+    status  = ""
+    failed  = $false
+    data    = ""
+}
+
 try {
     Import-Module VCF.PowerCLI
     Import-Module Ansible.ModuleUtils.Legacy
@@ -26,15 +37,6 @@ $vcenter_user     = Get-AnsibleParam -obj $params -name "vcenter_user" -type "st
 $vcenter_password = Get-AnsibleParam -obj $params -name "vcenter_password" -type "str" -secret $true -failifempty $false
 $esxi_location    = Get-AnsibleParam -obj $params -name "esxi_location" -type "str" -failifempty $false
 
-# Result object 
-$module = New-Object psobject @{
-    result  = ""
-    changed = $false
-    msg     = ""
-    status  = ""
-    failed  = $false
-    data    = ""
-}
 
 function update-error([string] $description) {
     $module.status = 'Error'
