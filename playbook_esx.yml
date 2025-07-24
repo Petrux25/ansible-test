@@ -22,7 +22,6 @@
         name: ssl_role_esxi
       vars:
         vcenter_server: "vcenter01.local.com"
-        vcenter_server: "vcenter01.local.com"
         vcenter_user: "administrator@vsphere.local"
         vcenter_password: "!Passw0rd"
         esxi_host: "esx010.local.com"
