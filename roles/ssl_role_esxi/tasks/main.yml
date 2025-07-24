@@ -10,13 +10,13 @@
         vcenter_password: "{{ vcenter_password }}"
       register: custom_mode_out
 
-    - name: Restart all vCenter services after setting custom mode
-      ansible.windows.win_shell: |
-        service-control --stop --all && service-control --start --all
-      args:
-        executable: cmd
-      register: restart_services
-      changed_when: "'Successfully started all services' in restart_services.stdout"
+    # - name: Restart all vCenter services after setting custom mode
+    #   ansible.windows.win_shell: |
+    #     service-control --stop --all && service-control --start --all
+    #   args:
+    #     executable: cmd
+    #   register: restart_services
+    #   changed_when: "'Successfully started all services' in restart_services.stdout"
 
   rescue:
 
