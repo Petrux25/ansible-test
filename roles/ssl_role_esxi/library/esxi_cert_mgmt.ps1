@@ -49,11 +49,10 @@ try {
     # --- Set vCenter in modo custom ---
     if ($esxi_action -eq "custom_mode") {
         try {
-            Import-Module VMware.PowerCLI -ErrorAction Stop
             Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false | Out-Null
             $vcConn = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop
             $module.msg += "Connected to vCenter. "
-            $certModeSetting = Get-AdvancedSetting -Entity $vcConn -Name "vpxd.certmgmt.mode"
+            $certModeSetting = Get-AdvancedSetting -Name "vpxd.certmgmt.mode" -Entity $vcConn -Server $vcConn
             Set-AdvancedSetting -AdvancedSetting $certModeSetting -Value "custom" -Confirm:$false
             $module.msg += "Set vpxd.certmgmt.mode to 'custom'. "
             Disconnect-VIServer -Server $vcConn -Confirm:$false
