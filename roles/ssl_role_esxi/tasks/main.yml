@@ -57,12 +57,6 @@
     # Step 2, continue with the ESXi cert replacement
 - name: copy certificate and set maintenance mode
   block:
-    - name: Copy ESXi certificate to host
-      ansible.windows.win_copy:
-        src: files/esxi_cert.pem
-        dest: "{{ esxi_cert_path }}"
-      register: esxi_cert_out
-
     - name: set maintenance mode
       esxi_cert_mgmt:
         esxi_action: "maintenance"
