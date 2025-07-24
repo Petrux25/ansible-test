@@ -55,7 +55,7 @@
 
 
     # Step 2, continue with the ESXi cert replacement
-- name: copy certificate and set maintenance mode
+- name: set maintenance mode and remove from vCenter
   block:
     - name: set maintenance mode
       esxi_cert_mgmt:
