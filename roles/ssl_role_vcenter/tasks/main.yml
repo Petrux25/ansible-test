@@ -4,24 +4,24 @@
   ansible.builtin.debug:
     msg: "{{ ca_cert_path }} {{ vcenter_server }} {{ vcenter_user }} {{ machine_ssl_cert_path }}"
 
-# - name: Connect to vCenter and add CA cert
-#   block:
-#     - name: Add CA to vCenter trusted store
-#       vcenter_cert_mgmt:
-#         vcenter_action: "add_CA"
-#         ca_cert_path: "{{ ca_cert_path }}"
-#         vcenter_server: "{{ vcenter_server }}"
-#         vcenter_user: "{{ vcenter_user }}"
-#         vcenter_password: "{{ vcenter_password }}"
-#       register: output_add_ca
+- name: Connect to vCenter and add CA cert
+  block:
+    - name: Add CA to vCenter trusted store
+      vcenter_cert_mgmt:
+        vcenter_action: "add_CA"
+        ca_cert_path: "{{ ca_cert_path }}"
+        vcenter_server: "{{ vcenter_server }}"
+        vcenter_user: "{{ vcenter_user }}"
+        vcenter_password: "{{ vcenter_password }}"
+      register: output_add_ca
 
-#   rescue:
-#     - name: show error message
-#       ansible.builtin.debug:
-#         msg: "Error !"
-#     - name: fail
-#       ansible.builtin.fail:
-#         msg: "Critical error 1"
+  rescue:
+    - name: show error message
+      ansible.builtin.debug:
+        msg: "Error !"
+    - name: fail
+      ansible.builtin.fail:
+        msg: "Critical error 1"
 
     # - name: Set error message
     #   ansible.builtin.set_fact:
