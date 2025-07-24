@@ -1,6 +1,17 @@
 #Requires -Module Ansible.ModuleUtils.Legacy
 #Requires -Module VMware.PowerCLI
 
+try {
+    Import-Module VCF.PowerCLI
+    Import-Module Ansible.ModuleUtils.Legacy
+    Import-Module VMware.VimAutomation.Sdk
+}
+catch {
+    $module.msg = "Error al importar modulos"
+    Exit-Json $module
+}
+
+
 $ErrorActionPreference = "Stop"
 
 # --- Read and parse incoming parameters ---
