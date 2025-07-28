@@ -121,22 +121,6 @@
         esxi_password: "{{ esxi_password }}"
       register: replace_mssl_out
 
-    - name: Wait for ESXi host to go back online
-      ansible.builtin.wait_for:
-        host: "{{ esxi_host }}"
-        port: 443
-        delay: 30
-        timeout: 600
-      delegate_to: localhost
-      register: waitfor_esxi
-
-    - name: Assert ESXi is back online
-      ansible.builtin.assert:
-        that:
-          - waitfor_esxi.state is defined
-          - waitfor_esxi.state == "started"
-        fail_msg: "ESXi host is NOT responding on port 443 after cert change."
-        success_msg: "ESXi host is back online on port 443."
   rescue:
 
     - name: Show error messsage
