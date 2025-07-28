@@ -59,17 +59,32 @@ try {
             Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false | Out-Null
             $vcConn = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop
             $esxi = Get-VMHost -Name $esxi_host
+    
+            Get-VM | Where-Object { $_.VMHost -eq $esxi -and $_.PowerState -eq "PoweredOn" } | ForEach-Object {
+                Write-Host "Apagando VM: $($_.Name)"
+                Stop-VM -VM $_ -Confirm:$false
+            }
+    
+            do {
+                $poweredOnVMs = Get-VM | Where-Object { $_.VMHost -eq $esxi -and $_.PowerState -eq "PoweredOn" }
+                if ($poweredOnVMs.Count -gt 0) {
+                    Write-Host "Esperando a que las VMs se apaguen..."
+                    Start-Sleep -Seconds 5
+                }
+            } while ($poweredOnVMs.Count -gt 0)
+    
             Set-VMHost -VMHost $esxi -State Maintenance -Confirm:$false
             $module.msg += "ESXi host $esxi_host set to maintenance mode. "
             Disconnect-VIServer -Server $vcConn -Confirm:$false
             $module.changed = $true
             $module.status = "Success"
-        } catch {
+        }
+        catch {
             update-error "Failed to put ESXi host into maintenance mode"
             Exit-Json $module
         }
     }
-
+    
     else {
         update-error "Unsupported esxi_action: $esxi_action"
         Exit-Json $module
