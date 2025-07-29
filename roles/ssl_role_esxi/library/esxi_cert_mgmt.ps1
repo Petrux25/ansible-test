@@ -60,15 +60,15 @@ try {
             $vcConn = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop
             $esxi = Get-VMHost -Name $esxi_host
     
-            Get-VM | Where-Object { $_.VMHost -eq $esxi -and $_.PowerState -eq "PoweredOn" } | ForEach-Object {
-                Write-Host "Apagando VM: $($_.Name)"
+            Get-VM -Server $vcConn | Where-Object { $_.VMHost -eq $esxi -and $_.PowerState -eq "PoweredOn" } | ForEach-Object {
+                Write-Host "Turning off VM: $($_.Name)"
                 Stop-VM -VM $_ -Confirm:$false
             }
     
             do {
-                $poweredOnVMs = Get-VM | Where-Object { $_.VMHost -eq $esxi -and $_.PowerState -eq "PoweredOn" }
+                $poweredOnVMs = Get-VM -Server $vcConn | Where-Object { $_.VMHost -eq $esxi -and $_.PowerState -eq "PoweredOn" }
                 if ($poweredOnVMs.Count -gt 0) {
-                    Write-Host "Esperando a que las VMs se apaguen..."
+                    Write-Host "Watiting for VMs to be powered off..."
                     Start-Sleep -Seconds 5
                 }
             } while ($poweredOnVMs.Count -gt 0)
