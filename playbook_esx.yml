@@ -24,7 +24,7 @@
         vcenter_server: "vcenter01.local.com"
         vcenter_user: "administrator@vsphere.local"
         vcenter_password: "!Passw0rd"
-        esxi_host: "esx010.local.com"
+        esxi_host: "esx001.local.com"
         esxi_user: "root"
         esxi_password: "!Passw0rd"
         esxi_cert_path: "C:\\Users\\diego.velasquez_rem\\Desktop\\ansible-test\\esxcert.cer"
