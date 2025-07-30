@@ -96,6 +96,12 @@ try {
         try {
             $vcConn = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop
             $vmhost = Get-VMHost -Name $esxi_host -Server $vcConn
+
+            Get-VDSwitch | ForEach-Object {
+                Write-Host "Removiendo host $esxiHost de VDS: $($_.Name)"
+                Remove-VDSwitchVMHost -VDSwitch $_ -VMHost $esxiHost -Confirm:$false
+            }
+
             Remove-VMHost $vmhost -Confirm:$false
             Write-Host "ESXi has been removed successfully"
             $module.msg += "ESXi $esxi_host has been removed from vCenter."
