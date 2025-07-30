@@ -58,7 +58,7 @@ try {
         try {
             Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false | Out-Null
             $vcConn = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop
-            $esxi = Get-VMHost 'esx001.local.com'
+            $esxi = Get-VMHost -Name $esxi_host
 
 
             $stoppedvms = @()
@@ -91,6 +91,7 @@ try {
             Exit-Json $module
         }
     }
+
 
     else {
         update-error "Unsupported esxi_action: $esxi_action"
