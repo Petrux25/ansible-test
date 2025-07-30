@@ -66,6 +66,10 @@
         vcenter_password: "{{ vcenter_password }}"
       register: maintenance_out
 
+    - name: Show powered off VMs
+      ansible.builtin.debug:
+        var: maintenance_out.data
+
     - name: Remove the ESXi host from vCenter
       esxi_cert_mgmt:
         esxi_action: "remove"
