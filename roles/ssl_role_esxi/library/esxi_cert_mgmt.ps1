@@ -53,7 +53,40 @@ try {
         }
     }
 
+    # --- ESX in maintenance mode ---
+    elseif ($esxi_action -eq "maintenance") {
+        try {
+            Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false | Out-Null
+            $vcConn = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop
+            $esxi = Get-VMHost -Name $esxi_host
+
+
+            $stoppedvms = @()
+            $vmstopoweroff = Get-VM -Server $vcConn | Where-Object { $_.VMHost -eq $esxi -and $_.PowerState -eq "PoweredOn" }
+            foreach ($vm in $vmstopoweroff) { Write-Host "Turning off VM: $($vm.Name)" 
+            Stop-VM -VM $vm -Confirm:$false
+            $stoppedvms += $vm.Name
+            }
+
     
+            do {
+                $poweredOnVMs = Get-VM -Server $vcConn | Where-Object { $_.VMHost -eq $esxi -and $_.PowerState -eq "PoweredOn" }
+                if ($poweredOnVMs.Count -gt 0) {
+                    Write-Host "Watiting for VMs to be powered off..."
+                    Start-Sleep -Seconds 5
+                }
+            } while ($poweredOnVMs.Count -gt 0)
+
+    
+            Set-VMHost -VMHost $esxi -State Maintenance -Confirm:$false
+            $module.msg += "ESXi host $esxi_host set to maintenance mode. "
+
+            $module.data = $stoppedvms
+            
+            Disconnect-VIServer -Server $vcConn -Confirm:$false
+            $module.changed = $true
+            $module.status = "Success"
+        }
         catch {
             update-error "Failed to put ESXi host into maintenance mode"
             Exit-Json $module
