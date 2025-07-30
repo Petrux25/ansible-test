@@ -58,7 +58,7 @@ try {
         try {
             Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false | Out-Null
             $vcConn = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop
-            $esxi = Get-VMHost -Name $esxi_host
+            $esxi = Get-VMHost 'esx001.local.com'
 
 
             $stoppedvms = @()
@@ -78,7 +78,6 @@ try {
                 }
             } while ($poweredOnVMs.Count -gt 0)
 
-    
             Set-VMHost -VMHost $esxi -State Maintenance
             $module.msg += "ESXi host $esxi_host set to maintenance mode. "
 
