@@ -83,7 +83,6 @@ try {
 
             $module.data = $stoppedvms
             
-            Disconnect-VIServer -Server $vcConn -Confirm:$false
             $module.changed = $true
             $module.status = "Success"
         }
@@ -98,9 +97,19 @@ try {
         Exit-Json $module
     }
 
-} catch {
+} 
+catch {
     update-error "Unexpected error in esxi_cert_mgmt"
     Exit-Json $module
+}
+
+finally {
+    if ($VIServer) {
+        try {
+            Disconnect-VIServer -Server $VIServer -Confirm:$false -ErrorAction SilentlyContinue
+            $module.msg += "Disconnected from vCenter."
+        } catch { }
+    }
 }
 
 # --- Default message ---
