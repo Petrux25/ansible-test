@@ -92,6 +92,15 @@ try {
         }
     }
 
+    elseif ($esxi_action -eq "remove") {
+        try {
+            $vmhost = Get-VMHost -Name $esxi_host
+            Remove-VMHost $vmhost
+        }
+        catch {
+            update-error "Failed to remove $esxi_host from vCenter"
+        }
+    }
 
     else {
         update-error "Unsupported esxi_action: $esxi_action"
