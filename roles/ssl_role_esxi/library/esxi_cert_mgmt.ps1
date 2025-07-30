@@ -79,7 +79,7 @@ try {
             } while ($poweredOnVMs.Count -gt 0)
 
     
-            #Set-VMHost -VMHost $esxi -State Maintenance -Confirm:$false
+            Set-VMHost -VMHost $esxi -State Maintenance
             $module.msg += "ESXi host $esxi_host set to maintenance mode. "
 
             $module.data = $stoppedvms
@@ -94,7 +94,6 @@ try {
         }
     }
 
-    
     else {
         update-error "Unsupported esxi_action: $esxi_action"
         Exit-Json $module
