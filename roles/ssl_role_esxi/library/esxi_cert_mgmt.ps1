@@ -95,7 +95,7 @@ try {
     elseif ($esxi_action -eq "remove") {
         try {
             $vcConn = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop
-            $vmhost = Get-VMHost -Name $esxi_host -Server $vcConn
+            $vmhost = Get-VMHost 'esx002.local.com' 
             Remove-VMHost $vmhost -Confirm:$false
             Write-Host "ESXi has been removed successfully"
             $module.msg += "ESXi $esxi_host has been removed from vCenter."
