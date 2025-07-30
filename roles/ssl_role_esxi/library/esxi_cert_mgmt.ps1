@@ -96,9 +96,11 @@ try {
         try {
             $vmhost = Get-VMHost -Name $esxi_host
             Remove-VMHost $vmhost
+            Write-Host "ESXi has been removed successfully"
         }
         catch {
             update-error "Failed to remove $esxi_host from vCenter"
+            Exit-Json $module
         }
     }
 
