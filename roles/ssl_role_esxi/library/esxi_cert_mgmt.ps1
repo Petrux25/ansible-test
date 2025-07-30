@@ -63,9 +63,10 @@ try {
 
             $stoppedvms = @()
             $vmstopoweroff = Get-VM -Server $vcConn | Where-Object { $_.VMHost -eq $esxi -and $_.PowerState -eq "PoweredOn" }
-            foreach ($vm in $vmstopoweroff) { Write-Host "Turning off VM: $($vm.Name)" 
-            Stop-VM -VM $vm -Confirm:$false
-            $stoppedvms += $vm.Name
+            foreach ($vm in $vmstopoweroff) { 
+                Write-Host "Turning off VM: $($vm.Name)" 
+                Stop-VM -VM $vm -Confirm:$false
+                $stoppedvms += $vm.Name
             }
 
     
@@ -78,7 +79,7 @@ try {
             } while ($poweredOnVMs.Count -gt 0)
 
     
-            Set-VMHost -VMHost $esxi -State Maintenance -Confirm:$false
+            #Set-VMHost -VMHost $esxi -State Maintenance -Confirm:$false
             $module.msg += "ESXi host $esxi_host set to maintenance mode. "
 
             $module.data = $stoppedvms
