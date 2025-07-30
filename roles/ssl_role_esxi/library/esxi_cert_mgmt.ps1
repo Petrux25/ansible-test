@@ -99,7 +99,7 @@ try {
 
             Get-VDSwitch | ForEach-Object {
                 Write-Host "Removiendo host $esxiHost de VDS: $($_.Name)"
-                Remove-VDSwitchVMHost -VDSwitch $_ -VMHost $esxiHost -Confirm:$false
+                Remove-VDSwitchVMHost -VDSwitch $_ -VMHost $esxi_host -Confirm:$false
             }
 
             Remove-VMHost $vmhost -Confirm:$false
