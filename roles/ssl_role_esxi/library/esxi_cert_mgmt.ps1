@@ -73,7 +73,7 @@ try {
             do {
                 $poweredOnVMs = Get-VM -Server $vcConn | Where-Object { $_.VMHost -eq $esxi -and $_.PowerState -eq "PoweredOn" }
                 if ($poweredOnVMs.Count -gt 0) {
-                    Write-Host "Watiting for VMs to be powered off..."
+                    Write-Host "Waiting for VMs to be powered off..."
                     Start-Sleep -Seconds 5
                 }
             } while ($poweredOnVMs.Count -gt 0)
@@ -103,6 +103,9 @@ try {
             if (-not $destinationPortGroup) {
                 throw "No Port Group found"
             }
+            #to get the esxcli object 
+
+            $esxcli = Get-EsxCli -VMHost $vmhost -V2
 
             #find all VDSwitches associated with host
 
@@ -120,7 +123,13 @@ try {
                         #To migrate VMkernel adapters to standard switch 
                         foreach ($vmk in $vmkToMigrate){
                             Write-Host "Migrating adapter $($vmk.DeviceName) from VDS '$($vds.Name)' to standard Port Group '$($destinationPortGroup.Name)' "
-                            Set-VMHostNetworkAdapter -VirtualNic $vmk -PortGroup $destinationPortGroup.Name
+                            
+                            $esxcliArgs = $esxcli.network.ip.interface.set.CreateArgs()
+                            $esxcliArgs.interfacename = $vmk.DeviceName 
+                            $esxcliArgs.portgroupname = $destinationPortName
+
+                            $esxcli.network.ip.interface.set.Invoke($esxcliArgs)
+                            
                         }
                     }
                     #now its possible to disconnect host from VDS
