@@ -107,13 +107,14 @@ try {
             #find all VDSwitches associated with host
 
             $vdSwitches = Get-VDSwitch -VMHost $vmhost -Server $vcConn
+
             if ($vdSwitches) {
                 Write-Host "$esxi_host is connected to the following VDS: $($vdSwitches.Name -join ',')"
                 $module.data = @{ RemovedFromVDSwitches = $vdSwitches.Name }
 
                 foreach ($vds in $vdSwitches) {
                     #find VMkernel adapters used in VDS
-                    $vmkToMigrate = Get-VMHostNetworkAdapter -VMHost $vmhost -DistributedSwitch $vds
+                    $vmkToMigrate = Get-VMHostNetworkAdapter -VMHost $vmhost -DistributedSwitch $vds -VMKernel 
 
                     if ($vmkToMigrate) {
                         #To migrate VMkernel adapters to standard switch 
@@ -134,7 +135,7 @@ try {
             Remove-VMHost $vmhost -Confirm:$false
             Write-Host "ESXi has been removed successfully"
 
-            
+
             $module.msg += "ESXi $esxi_host has been removed from vCenter."
             $module.changed = $true
             $module.status = "Success"
