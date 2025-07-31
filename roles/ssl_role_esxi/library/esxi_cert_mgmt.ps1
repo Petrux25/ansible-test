@@ -97,16 +97,6 @@ try {
             $vcConn = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop
             $vmhost = Get-VMHost -Name $esxi_host -Server $vcConn
             
-            $destinationPortName = 'Management Network'
-            $destinationPortGroup = Get-VirtualPortGroup -VMHost $vmhost -Name $destinationPortName -Standard
-
-            if (-not $destinationPortGroup) {
-                throw "No Port Group found"
-            }
-            #to get the esxcli object 
-
-            $esxcli = Get-EsxCli -VMHost $vmhost -V2
-
             #find all VDSwitches associated with host
 
             $vdSwitches = Get-VDSwitch -VMHost $vmhost -Server $vcConn
@@ -117,24 +107,12 @@ try {
 
                 foreach ($vds in $vdSwitches) {
                     #find VMkernel adapters used in VDS
-                    $vmkToMigrate = Get-VMHostNetworkAdapter -VMHost $vmhost -DistributedSwitch $vds -VMKernel 
+                    $vmkToRemove = Get-VMHostNetworkAdapter -VMHost $vmhost -DistributedSwitch $vds -VMKernel 
 
-                    if ($vmkToMigrate) {
-                        #To migrate VMkernel adapters to standard switch 
-                        foreach ($vmk in $vmkToMigrate){
-                            Write-Host "Checking VMkernel adaptor: $($vmk.DeviceName)"
-
-                            if ($vmk -and $vmk.DeviceName) {
-                                Write-Host "Trying to migrate $($vmk.DeviceName) from VDS to standard Port Group '$destinationPortName'"
-                                $esxcliArgs = $esxcli.network.ip.interface.set.CreateArgs()
-                                $esxcliArgs.interfacename = $vmk.DeviceName 
-                                $esxcliArgs.portgroupname = $destinationPortName
-
-                                $esxcli.network.ip.interface.set.Invoke($esxcliArgs)
-                            }
-                            else {
-                                Write-Host "A VMkernel with invalid name was ignored."
-                            }                             
+                    if ($vmkToRemove) {
+                        #To migrate VMkernel adapters to standard switch
+                        Write-Host "Removing VMkernel adaptors..."
+                        Remove-VMHostNetworkAdapter -Nic $vmkToRemove -Confirm:$false         
                         }
                     }
                     #now its possible to disconnect host from VDS
@@ -174,7 +152,7 @@ catch {
 finally {
     if ($VIServer) {
         try {
-            Disconnect-VIServer -Server $VIServer -Confirm:$false -ErrorAction SilentlyContinue
+            Disconnect-VIServer -Server $vcConn -Confirm:$false -ErrorAction SilentlyContinue
             $module.msg += "Disconnected from vCenter."
         } catch { }
     }
