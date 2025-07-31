@@ -113,11 +113,9 @@ try {
                         #To migrate VMkernel adapters to standard switch
                         Write-Host "Removing VMkernel adaptors..."
                         Remove-VMHostNetworkAdapter -Nic $vmkToRemove -Confirm:$false         
-                        }
                     }
-                    #now its possible to disconnect host from VDS
-                    Write-Host "Disconnecting host from VDS: $($vds.Name)"
-                    Remove-VDSwitchVMHost -VDSwitch $vds -VMHost $vmhost -Confirm:$false
+                        Write-Host "Disconnecting host from VDS: $($vds.Name)"
+                        Remove-VDSwitchVMHost -VDSwitch $vds -VMHost $vmhost -Confirm:$false
                 }
                 $module.msg += "Host has been disconnected from all VDS"
             } else {
