@@ -120,7 +120,7 @@ try {
                         #To migrate VMkernel adapters to standard switch 
                         foreach ($vmk in $vmkToMigrate){
                             Write-Host "Migrating adapter $($vmk.DeviceName) from VDS '$($vds.Name)' to standard Port Group '$($destinationPortGroup.Name)' "
-                            Set-VMHostNetworkAdapter -VirtualNic $vmk -PortGroup $destinationPortGroup
+                            Set-VMHostNetworkAdapter -VirtualNic $vmk -NetworkName $destinationPortGroup
                         }
                     }
                     #now its possible to disconnect host from VDS
