@@ -122,14 +122,19 @@ try {
                     if ($vmkToMigrate) {
                         #To migrate VMkernel adapters to standard switch 
                         foreach ($vmk in $vmkToMigrate){
-                            Write-Host "Migrating adapter $($vmk.DeviceName) from VDS '$($vds.Name)' to standard Port Group '$($destinationPortGroup.Name)' "
-                            
-                            $esxcliArgs = $esxcli.network.ip.interface.set.CreateArgs()
-                            $esxcliArgs.interfacename = $vmk.DeviceName 
-                            $esxcliArgs.portgroupname = $destinationPortName
+                            Write-Host "Checking VMkernel adaptor: $($vmk.DeviceName)"
 
-                            $esxcli.network.ip.interface.set.Invoke($esxcliArgs)
-                            
+                            if ($vmk -and $vmk.DeviceName) {
+                                Write-Host "Trying to migrate $($vmk.DeviceName) from VDS to standard Port Group '$destinationPortName'"
+                                $esxcliArgs = $esxcli.network.ip.interface.set.CreateArgs()
+                                $esxcliArgs.interfacename = $vmk.DeviceName 
+                                $esxcliArgs.portgroupname = $destinationPortName
+
+                                $esxcli.network.ip.interface.set.Invoke($esxcliArgs)
+                            }
+                            else {
+                                Write-Host "A VMkernel with invalid name was ignored."
+                            }                             
                         }
                     }
                     #now its possible to disconnect host from VDS
