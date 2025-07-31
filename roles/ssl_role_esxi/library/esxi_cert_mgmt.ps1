@@ -97,23 +97,44 @@ try {
             $vcConn = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop
             $vmhost = Get-VMHost -Name $esxi_host -Server $vcConn
             
+            $destinationPortName = 'Management Network'
+            $destinationPortGroup = Get-VirtualPortGroup -VMHost $vmhost -Name $destinationPortName -Standard
+
+            if (-not $destinationPortGroup) {
+                throw "No Port Group found"
+            }
+
+            #find all VDSwitches associated with host
+
             $vdSwitches = Get-VDSwitch -VMHost $vmhost -Server $vcConn
             if ($vdSwitches) {
                 Write-Host "$esxi_host is connected to the following VDS: $($vdSwitches.Name -join ',')"
                 $module.data = @{ RemovedFromVDSwitches = $vdSwitches.Name }
 
                 foreach ($vds in $vdSwitches) {
+                    #find VMkernel adapters used in VDS
+                    $vmkToMigrate = Get-VMHostNetworkAdapter -VMHost $vmhost -DistributedSwitch $vds
+
+                    if ($vmkToMigrate) {
+                        #To migrate VMkernel adapters to standard switch 
+                        foreach ($vmk in $vmkToMigrate){
+                            Write-Host "Migrating adapter $($vmk.DeviceName) from VDS '$($vds.Name)' to standard Port Group '$($destinationPortGroup.Name)' "
+                            Set-VMHostNetworkAdapter -VirtualNic $vmk -PortGroup $destinationPortGroup
+                        }
+                    }
+                    #now its possible to disconnect host from VDS
                     Write-Host "Disconnecting host from VDS: $($vds.Name)"
                     Remove-VDSwitchVMHost -VDSwitch $vds -VMHost $vmhost -Confirm:$false
                 }
-                $module.msg += "Host has been disconnected from alll VDS"
+                $module.msg += "Host has been disconnected from all VDS"
             } else {
                 Write-Host "$esxi_host is not connected to a VDS"
             }
             Write-Host "Removing $esxi_host from vCenter"
-
             Remove-VMHost $vmhost -Confirm:$false
             Write-Host "ESXi has been removed successfully"
+
+            
             $module.msg += "ESXi $esxi_host has been removed from vCenter."
             $module.changed = $true
             $module.status = "Success"
