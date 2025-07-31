@@ -96,16 +96,21 @@ try {
         try {
             $vcConn = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop
             $vmhost = Get-VMHost -Name $esxi_host -Server $vcConn
-
             
-            $allVDS = Get-VDSwitch
-            foreach ($vds in $allVDS) {
-                $vdsHost = Get-VDSwitchVMHost -VDSwitch $vds -VMHost $vmhost -ErrorAction SilentlyContinue
-                if ($vdsHost) {
+            $vdSwitches = Get-VDSwitch -VMHost $vmhost -Server $vcConn
+            if ($vdSwitches) {
+                Write-Host "$esxi_host is connected to the following VDS: $($vdSwitches.Name -join ',')"
+                $module.data = @{ RemovedFromVDSwitches = $vdSwitches.Name }
+
+                foreach ($vds in $vdSwitches) {
+                    Write-Host "Disconnecting host from VDS: $($vds.Name)"
                     Remove-VDSwitchVMHost -VDSwitch $vds -VMHost $vmhost -Confirm:$false
                 }
+                $module.msg += "Host has been disconnected from alll VDS"
+            } else {
+                Write-Host "$esxi_host is not connected to a VDS"
             }
-
+            Write-Host "Removing $esxi_host from vCenter"
 
             Remove-VMHost $vmhost -Confirm:$false
             Write-Host "ESXi has been removed successfully"
