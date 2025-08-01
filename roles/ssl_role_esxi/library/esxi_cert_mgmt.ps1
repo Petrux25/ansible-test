@@ -136,6 +136,44 @@ try {
         }
     }
 
+    # --- Replace ESXi certificate ---
+elseif ($esxi_action -eq "replace_cert") {
+    try {
+        # 1. Conectar directamente al host ESXi
+        Write-Host "Connecting directly to ESXi host: $esxi_host"
+        $esxConnection = Connect-VIServer -Server $esxi_host -User $esxi_user -Password $esxi_password -Force -ErrorAction Stop
+        
+        # 2. Leer el nuevo certificado desde el archivo .pem
+        Write-Host "Reading certificate from: $esxi_cert_path"
+        $esxCertificatePem = Get-Content -Raw -Path $esxi_cert_path
+        
+        # 3. Obtener el objeto del host para el comando
+        $targetEsxHost = Get-VMHost -Name $esxi_host -Server $esxConnection
+        
+        # 4. Establecer el nuevo certificado de máquina en el host
+        Write-Host "Setting new machine certificate on $esxi_host..."
+        Set-VIMachineCertificate -PemCertificate $esxCertificatePem -VMHost $targetEsxHost | Out-Null
+        
+        # 5. Reiniciar el host para que el cambio de certificado tenga efecto (mandatorio)
+        Write-Host "Restarting host $esxi_host to apply certificate changes..."
+        Restart-VMHost -VMHost $targetEsxHost -Confirm:$false
+        
+        $module.msg = "New certificate has been set on $esxi_host. A host reboot has been initiated."
+        $module.changed = $true
+        $module.status = "Success"
+        
+        # No se desconecta aquí porque el host se está reiniciando
+        
+    } catch {
+        update-error "Failed to replace certificate on ESXi host $esxi_host"
+        # Intentar desconectar si la conexión aún existe
+        if (Get-VIServer -Server $esxi_host -ErrorAction SilentlyContinue) {
+            Disconnect-VIServer -Server $esxi_host -Confirm:$false
+        }
+        Exit-Json $module
+    }
+}
+
     else {
         update-error "Unsupported esxi_action: $esxi_action"
         Exit-Json $module
