@@ -88,12 +88,22 @@ try {
 
     else {
         update-error "Unsupported vcenter_action: 'vcenter_action' "
+        $module.failed = $true
+        $module.changed = $false
+        $module.status = 'Error'
+        $module.FailJson = "ErrorCode: 2002"
+        $module.msg = 'Unsupported vcenter_action'
         Exit-Json $module
     }
 
 }
 catch {
     update-error "Error in vCenter action execution"
+    $module.failed = $true
+    $module.changed = $false
+    $module.status = 'Error'
+    $module.FailJson = "ErrorCode: 2003"
+    $module.msg = 'General PowerCLI/PowerShell error during certificate operation'
     Exit-Json $module
 }
 finally {
