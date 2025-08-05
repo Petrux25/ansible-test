@@ -29,9 +29,8 @@ prerequisite | 1001 | vCenter credentials missing or invalid.
 prerequisite | 1002 | Required certificate file(s) not found.
 vcenter_cert | 2000 | Failed to add CA root certificate to vCenter trust store.
 vcenter_cert | 2001 | Failed to replace Machine SSL certificate.
-vcenter_cert | 2002 | vCenter did not come back online after certificate change.
-vcenter_cert | 2003 | Unsupported vcenter_action specified.
-vcenter_cert | 2004 | General PowerCLI/PowerShell error during certificate operation.
+vcenter_cert | 2002 | Unsupported vcenter_action specified.
+vcenter_cert | 2003 | General PowerCLI/PowerShell error during certificate operation.
 
 
 ## Procedure 

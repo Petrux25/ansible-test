@@ -1,10 +1,77 @@
 ---
+- name: Verify connection
+  block:
+    - name: Test connectivity
+      vcenter_cert_mgmt:
+        vcenter_action: "connect"
+        vcenter_server: "{{ vcenter_server }}"
+        vcenter_user: "{{ vcenter_user }}"
+        vcenter_password: "{{ vcenter_password }}"
+      register: connection_output
 
-- name: Show variables
-  ansible.builtin.debug:
-    msg: "{{ ca_cert_path }} {{ vcenter_server }} {{ vcenter_user }} {{ machine_ssl_cert_path }}"
+  rescue:
+    - name: show error message
+      ansible.builtin.debug:
+        msg: "An error has occurred"
+    - name: fail
+      ansible.builtin.fail:
+        msg: "Failed to connect to vCenter."
 
-- name: Connect to vCenter and add CA cert
+    - name: Set error message
+      ansible.builtin.set_fact:
+        assert_msg: >
+          Failed to connect to vCenter.
+
+    - name: RC in case of failure
+      ansible.builtin.include_role:
+        name: ansible_role_returncode
+      vars:
+        rc_support: account
+        rc_group: framework_playbook
+        rc_number: 1000
+        rc_message: "{{ assert_msg }}"
+
+    - name: Set exit flag
+      ansible.builtin.set_fact:
+        validate_rc_error: true
+      delegate_facts: true
+      delegate_to: localhost
+
+    - name: End all tasks for this host
+      ansible.builtin.meta: end_host
+
+
+- name: Validate certificate paths
+  block:
+    - name: Check paths
+      vcenter_cert_mgmt:
+        vcenter_action: "cert_validation"
+        ca_cert_path: "{{ ca_cert_path }}"
+        machine_ssl_cert_path: "{{ machine_ssl_cert_path }}"
+
+  rescue:
+    - name: show error message
+      ansible.builtin.debug:
+        msg: "An error has occurred"
+    - name: fail
+      ansible.builtin.fail:
+        msg: "Failed to connect to vCenter."
+
+    - name: Set error message
+      ansible.builtin.set_fact:
+        assert_msg: >
+          Failed to connect to vCenter.
+
+    - name: RC in case of failure
+      ansible.builtin.include_role:
+        name: ansible_role_returncode
+      vars:
+        rc_support: account
+        rc_group: framework_playbook
+        rc_number: 1002
+        rc_message: "{{ assert_msg }}"
+
+- name: Add CA cert
   block:
     - name: Add CA to vCenter trusted store
       vcenter_cert_mgmt:
@@ -18,35 +85,35 @@
   rescue:
     - name: show error message
       ansible.builtin.debug:
-        msg: "Error !"
+        msg: "An error has occurred"
     - name: fail
       ansible.builtin.fail:
-        msg: "Critical error 1"
+        msg: "Failed to add CA root certificate to the trusted store."
 
-    # - name: Set error message
-    #   ansible.builtin.set_fact:
-    #     assert_msg: >
-    #       Failed to add CA certificate to the trusted store.
+    - name: Set error message
+      ansible.builtin.set_fact:
+        assert_msg: >
+          Failed to add CA certificate to the trusted store.
 
-    # - name: RC in case of failure
-    #   ansible.builtin.include_role:
-    #     name: ansible_role_returncode
-    #   vars:
-    #     rc_support: account
-    #     rc_group: framework_playbook
-    #     rc_number: 2200
-    #     rc_message: "{{ assert_msg }}"
+    - name: RC in case of failure
+      ansible.builtin.include_role:
+        name: ansible_role_returncode
+      vars:
+        rc_support: account
+        rc_group: framework_playbook
+        rc_number: 2000
+        rc_message: "{{ assert_msg }}"
 
-    # - name: Set exit flag
-    #   ansible.builtin.set_fact:
-    #     validate_rc_error: true
-    #   delegate_facts: true
-    #   delegate_to: localhost
+    - name: Set exit flag
+      ansible.builtin.set_fact:
+        validate_rc_error: true
+      delegate_facts: true
+      delegate_to: localhost
 
-    # - name: End all tasks for this host
-    #   ansible.builtin.meta: end_host
+    - name: End all tasks for this host
+      ansible.builtin.meta: end_host
 
-- name: Change Machine SSL certificate and wait for vCenter
+- name: Change Machine SSL certificate
   block:
     - name: Change vCenter Machine SSL certificate
       vcenter_cert_mgmt:
@@ -60,33 +127,31 @@
   rescue:
     - name: show error message
       ansible.builtin.debug:
-        msg: "Error!"
+        msg: "An error has occurred"
     - name: fail
       ansible.builtin.debug:
-        msg: "critical error 2"
+        msg: "Failed to replace SSL certificate"
 
 
-    # - name: Set error message
-    #   ansible.builtin.set_fact:
-    #     assert_msg: >
-    #       Machine SSL certificate change or vCenter restart failed.
-    #       {% if "Machine SSL" in ansible_failed_result.msg | d('') %}Failed to change the Machine SSL certificate.{% endif %}
-    #       {% if "wait for" in ansible_failed_result.msg | d('') %}Timeout waiting for vCenter to come online.{% endif %}
+    - name: Set error message
+      ansible.builtin.set_fact:
+        assert_msg: >
+          Failed to replace SSL certificate.
 
-    # - name: RC in case of failure
-    #   ansible.builtin.include_role:
-    #     name: ansible_role_returncode
-    #   vars:
-    #     rc_support: account
-    #     rc_group: framework_playbook
-    #     rc_number: 2200
-    #     rc_message: "{{ assert_msg }}"
+    - name: RC in case of failure
+      ansible.builtin.include_role:
+        name: ansible_role_returncode
+      vars:
+        rc_support: account
+        rc_group: framework_playbook
+        rc_number: 2001
+        rc_message: "{{ assert_msg }}"
 
-    # - name: Set exit flag
-    #   ansible.builtin.set_fact:
-    #     validate_rc_error: true
-    #   delegate_facts: true
-    #   delegate_to: localhost
+    - name: Set exit flag
+      ansible.builtin.set_fact:
+        validate_rc_error: true
+      delegate_facts: true
+      delegate_to: localhost
 
-    # - name: End all tasks for this host
-    #   ansible.builtin.meta: end_host
+    - name: End all tasks for this host
+      ansible.builtin.meta: end_host

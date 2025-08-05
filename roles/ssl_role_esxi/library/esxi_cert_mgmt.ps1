@@ -1,6 +1,5 @@
 #Requires -Module Ansible.ModuleUtils.Legacy
 
-
 # Result object 
 $module = New-Object psobject @{
     result  = ""

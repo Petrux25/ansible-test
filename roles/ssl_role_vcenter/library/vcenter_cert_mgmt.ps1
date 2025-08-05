@@ -4,10 +4,10 @@
 $ErrorActionPreference =  "Stop"
 
 $params = Parse-Args $args -supports_check_mode $true
-$vcenter_action = Get-AnsibleParam -obj $params -name "vcenter_action" -type "str" -failifempty $false
-$vcenter_server = Get-AnsibleParam -obj $params -name "vcenter_server" -type "str" -failifempty $false
-$vcenter_user = Get-AnsibleParam -obj $params -name "vcenter_user" -type "str" -failifempty $false
-$vcenter_password = Get-AnsibleParam -obj $params -name "vcenter_password" -type "str" -secret $true -failifempty $false
+$vcenter_action = Get-AnsibleParam -obj $params -name "vcenter_action" -type "str" -failifempty $true
+$vcenter_server = Get-AnsibleParam -obj $params -name "vcenter_server" -type "str" -failifempty $true
+$vcenter_user = Get-AnsibleParam -obj $params -name "vcenter_user" -type "str" -failifempty $true
+$vcenter_password = Get-AnsibleParam -obj $params -name "vcenter_password" -type "str" -secret $true -failifempty $true
 $ca_cert_path = Get-AnsibleParam -obj $params -name "ca_cert_path" -type "str" -failifempty $false
 $machine_ssl_cert_path = Get-AnsibleParam -obj $params -name "machine_ssl_cert_path" -type "str" -failifempty $false
 
@@ -39,19 +39,35 @@ $variables = @{
 $module.data = $variables 
 
 $VIServer = $null
+
+if ($vcenter_action -eq "connect") {
+    try {
+        $module.msg += "Trying to connect to vCenter \n"
+        Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop
+        $module.msg += "Successfull connection"
+        Exit-Json $module
+    }
+    catch {
+        $module.msg += "Unable to connect with vCenter."
+        Exit-Json $module
+    }
+
+    finally {
+        Disconnect-VIServer -Server $VIServer -Confirm:$false -ErrorAction SilentlyContinue
+    }
+}
+
+if ($vcenter_action -eq "cert_validation" -and -not ($ca_cert_path -or $machine_ssl_cert_path)){
+    $module.msg += "Missing required certificate file(s)"
+    Exit-Json $module
+}
 try {
-    $module.msg += "Entrando en el try \n"
 
-    $module.msg += "Probando conectar con vcenter \n"
-
-    # 1. Conectarse SIEMPRE al principio
     $VIServer = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop 
-    $module.msg += "Connected to vCenter. \n"
 
-
-    $module.msg += "Intentando agregar CA root \n"
 
     if ($vcenter_action -eq "add_CA") {
+        $module.msg += "Trying to add CA root certificate \n"
         $trustedCertChain = Get-Content $ca_cert_path -Raw
         Add-VITrustedCertificate -PemCertificateOrChain $trustedCertChain -VCenterOnly -Confirm:$false
         $module.msg += "CA added to vCenter trusted store."
@@ -61,6 +77,7 @@ try {
     }
 
     elseif ($vcenter_action -eq "replace_certificate") {
+        $module.msg += "Trying to replace SSL certificate \n"
         $vcCert = Get-Content $machine_ssl_cert_path -Raw
         Set-VIMachineCertificate -PemCertificate $vcCert -Confirm:$false
         $module.msg += "Machine SSL certificate replaced successfully. "
