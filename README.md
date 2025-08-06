@@ -18,6 +18,10 @@ Variable | Default | Comments
 *vcenter_action* (String) | "add_CA" / "replace_certificate" | Action to perform: "add_CA" to add CA root certificate, "replace_certificate" to replace the Machine SSL certificate
 
 
+Note: All file paths must be absolute and accessible by the Ansible controller. Certificate files must be in CER or PEM format or (base64-encoded).
+
+
+
 ## Results from execution
 
 After the execution, the playbook will log a return code for each node to identify the result. Use this as a reference.
@@ -40,15 +44,21 @@ This automation performs the following steps to manage SSL certificates on a VMw
 1. Displays input variables
 Outputs the values of the key variables (ca_cert_path, vcenter_server, vcenter_user, and machine_ssl_cert_path) for debugging and traceability.
 
-2. Connects to vCenter and adds the CA certificate:
+2. Validates vCenter Connectivity:
+Attempts to connect to the specified vCenter server using the provided credentials. Fails early if unreachable or credentials are invalid.
+
+3. Validates certificate paths.
+Verifies the existence of all required certificate files before attempting any changes.
+
+4. Connects to vCenter and adds the CA certificate:
 Attempts to connect to the specified vCenter server using the provided credentials and installs the CA root certificate into the vCenter trusted certificate store.
 
-4. Replaces the Machine SSL certificate:
+5. Replaces the Machine SSL certificate:
 After successfully adding the CA certificate, the playbook initiates the replacement of the Machine SSL certificate in vCenter using the provided certificate file.
 
 * This operation is also wrapped in error handling to report any issues encountered during the process.
 
-5. Handles error:
+6. Handles error:
 For each major step (adding CA, replacing certificate), the playbook includes rescue/exception handling. If a task fails, it shows a debug message and fails the playbook for that host with a clear critical error message.
 
 * Notes: 
