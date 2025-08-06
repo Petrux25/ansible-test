@@ -24,7 +24,7 @@ $module = New-Object psobject @{
 function update-error([string] $description) {
     $module.status = 'Error'
     $module.msg = "Error - $description. $($_.Exception.Message)"
-    $module.FailJson = ("Error: Stage: $description", $_)
+    $module.FailJson = "ErrorCod: $code"
     $module.failed = $true
 }
 
@@ -40,6 +40,7 @@ $module.data = $variables
 
 $VIServer = $null
 
+
 if ($vcenter_action -eq "connect") {
     try {
         $module.msg += "Trying to connect to vCenter \n"
@@ -47,25 +48,34 @@ if ($vcenter_action -eq "connect") {
         $module.msg += "Successfull connection"
     }
     catch {
-        update-error "Unable to connect with vCenter."
+        if ($_.Exception.Message -match "incorrect username or password" -or $_.Exception.Message -match "Cannot complete login") {
+            $module.failed = $true
+            $module.msg = "Error 1001 - vCenter credentials missing or invalid. $($_.Exception.Message)"
+            $module.FailJson = "ErrorCode: 1001"
+        }
+        else {
+            $module.failed = $true
+            $module.msg = "Error 2003 - Unable to connect with vCenter. $($_.Exception.Message)"
+            $module.FailJson = "ErrorCode: 2003"
+        }
     }
-
     finally {
-        Disconnect-VIServer -Server $VIServer -Confirm:$false -ErrorAction SilentlyContinue
+        if ($VIServer){
+            Disconnect-VIServer -Server $VIServer -Confirm:$false -ErrorAction SilentlyContinue
+        }
         Exit-Json $module
     }
 }
 
 if ($vcenter_action -eq "cert_validation" -and -not ($ca_cert_path -or $machine_ssl_cert_path)){
     update-error "Unable to find required certificate file(s)"
+    Exit-Json $module
 }
 try {
-
-    $VIServer = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop 
-
-
+    $VIServer = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop
+    
     if ($vcenter_action -eq "add_CA") {
-        $module.msg += "Trying to add CA root certificate \n"
+        $module.msg += "Trying to add CA root certificate `n"
         $trustedCertChain = Get-Content $ca_cert_path -Raw
         Add-VITrustedCertificate -PemCertificateOrChain $trustedCertChain -VCenterOnly -Confirm:$false
         $module.msg += "CA added to vCenter trusted store."
@@ -86,6 +96,7 @@ try {
 
     else {
         update-error "Error 2002: unsupported vcenter_action"
+        Exit-Json
     }
 
 }
