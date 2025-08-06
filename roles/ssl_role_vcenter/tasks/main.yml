@@ -9,18 +9,20 @@
         vcenter_password: "{{ vcenter_password }}"
       register: connection_output
 
+    - name: Check if credentials worked
+      ansible.builtin.assert:
+        that:
+          - connection_output.failed is false
+        quiet: true
+
   rescue:
     - name: show error message
       ansible.builtin.debug:
         msg: "An error has occurred"
-    - name: fail
-      ansible.builtin.fail:
-        msg: "Failed to connect to vCenter."
 
     - name: Set error message
       ansible.builtin.set_fact:
-        assert_msg: >
-          Failed to connect to vCenter.
+        assert_msg: "Failed to connect to vCenter, check credentials. {{ connection_output.msg }}"
 
     - name: RC in case of failure
       ansible.builtin.include_role:
@@ -48,19 +50,16 @@
         vcenter_action: "cert_validation"
         ca_cert_path: "{{ ca_cert_path }}"
         machine_ssl_cert_path: "{{ machine_ssl_cert_path }}"
+      register: cert_validation_output
 
   rescue:
     - name: show error message
       ansible.builtin.debug:
         msg: "An error has occurred"
-    - name: fail
-      ansible.builtin.fail:
-        msg: "Failed to connect to vCenter."
 
     - name: Set error message
       ansible.builtin.set_fact:
-        assert_msg: >
-          Failed to connect to vCenter.
+        assert_msg: "Failed to find required certificate file(s). {{ cert_validation_output.msg }}"
 
     - name: RC in case of failure
       ansible.builtin.include_role:
@@ -70,6 +69,15 @@
         rc_group: framework_playbook
         rc_number: 1002
         rc_message: "{{ assert_msg }}"
+
+    - name: Set exit flag
+      ansible.builtin.set_fact:
+        validate_rc_error: true
+      delegate_facts: true
+      delegate_to: localhost
+
+    - name: End all tasks for this host
+      ansible.builtin.meta: end_host
 
 - name: Add CA cert
   block:
@@ -86,14 +94,10 @@
     - name: show error message
       ansible.builtin.debug:
         msg: "An error has occurred"
-    - name: fail
-      ansible.builtin.fail:
-        msg: "Failed to add CA root certificate to the trusted store."
 
     - name: Set error message
       ansible.builtin.set_fact:
-        assert_msg: >
-          Failed to add CA certificate to the trusted store.
+        assert_msg: "Failed to add CA certificate to the trusted store. {{ output_add_ca.msg }}"
 
     - name: RC in case of failure
       ansible.builtin.include_role:
@@ -128,15 +132,10 @@
     - name: show error message
       ansible.builtin.debug:
         msg: "An error has occurred"
-    - name: fail
-      ansible.builtin.debug:
-        msg: "Failed to replace SSL certificate"
-
 
     - name: Set error message
       ansible.builtin.set_fact:
-        assert_msg: >
-          Failed to replace SSL certificate.
+        assert_msg: "Failed to replace SSL certificate. {{ out_cert_mgmt.msg }}"
 
     - name: RC in case of failure
       ansible.builtin.include_role:

@@ -45,21 +45,19 @@ if ($vcenter_action -eq "connect") {
         $module.msg += "Trying to connect to vCenter \n"
         Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop
         $module.msg += "Successfull connection"
-        Exit-Json $module
     }
     catch {
-        $module.msg += "Unable to connect with vCenter."
-        Exit-Json $module
+        update-error "Unable to connect with vCenter."
     }
 
     finally {
         Disconnect-VIServer -Server $VIServer -Confirm:$false -ErrorAction SilentlyContinue
+        Exit-Json $module
     }
 }
 
 if ($vcenter_action -eq "cert_validation" -and -not ($ca_cert_path -or $machine_ssl_cert_path)){
-    $module.msg += "Missing required certificate file(s)"
-    Exit-Json $module
+    update-error "Unable to find required certificate file(s)"
 }
 try {
 
@@ -87,23 +85,12 @@ try {
     }
 
     else {
-        update-error "Unsupported vcenter_action: 'vcenter_action' "
-        $module.failed = $true
-        $module.changed = $false
-        $module.status = 'Error'
-        $module.FailJson = "ErrorCode: 2002"
-        $module.msg = 'Unsupported vcenter_action'
-        Exit-Json $module
+        update-error "Error 2002: unsupported vcenter_action"
     }
 
 }
 catch {
-    update-error "Error in vCenter action execution"
-    $module.failed = $true
-    $module.changed = $false
-    $module.status = 'Error'
-    $module.FailJson = "ErrorCode: 2003"
-    $module.msg = 'General PowerCLI/PowerShell error during certificate operation'
+    update-error "Error 2003, General PowerCLI/PowerShell error during certificate operation"
     Exit-Json $module
 }
 finally {
