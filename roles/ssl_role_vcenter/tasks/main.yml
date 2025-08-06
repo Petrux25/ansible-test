@@ -52,6 +52,12 @@
         machine_ssl_cert_path: "{{ machine_ssl_cert_path }}"
       register: cert_validation_output
 
+    - name: Check certificate files
+      ansible.builtin.assert:
+        that:
+          - cert_validation_output.failed is false
+        quiet: true
+
   rescue:
     - name: show error message
       ansible.builtin.debug:
@@ -90,6 +96,12 @@
         vcenter_password: "{{ vcenter_password }}"
       register: output_add_ca
 
+    - name: Check if CA was added
+      ansible.builtin.assert:
+        that:
+          - output_add_ca.failed is false
+        quiet: true
+
   rescue:
     - name: show error message
       ansible.builtin.debug:
@@ -127,6 +139,12 @@
         vcenter_user: "{{ vcenter_user }}"
         vcenter_password: "{{ vcenter_password }}"
       register: output_cert_mgmt
+
+    - name: Check if certificate was replaced
+      ansible.builtin.assert:
+        that:
+          - output_add_ca.failed is false
+        quiet: true
 
   rescue:
     - name: show error message
