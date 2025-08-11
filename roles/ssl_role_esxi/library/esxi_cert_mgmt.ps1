@@ -213,28 +213,45 @@ try {
 
     elseif ($esxi_action -eq "re-add") {
         try {
-            if (-not $module.data.HostLocation) {throw "No location found for ESXi host in module data"}
-            $datacenter = $module.data.HostLocation.Datacenter
-            $cluster = $module.data.HostLocation.Cluster   
-            
+            #log de entrada 
+            $module.msg += "[re-add] Inputs -> Host: $esxi_host, DC: $target_datacenter, cluster: $target_cluster."
+            if (-not $target_datacenter) {throw "No location found for ESXi host in module data"}
+        
             $vcConn = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop
-            $dcObj = Get-Datacenter -Name $datacenter -Server $vcConn -ErrorAction Stop
-            if ($cluster) {
-                $locationObj = Get-Cluster -Name $cluster -Location $dcObj -Server $vcConn -ErrorAction Stop
+            $module.msg += "[re-add] Connected to vCenter $vcenter_server `n"
+            $existing = Get-VMHost -Name $esxi_host -Server $vcConn -ErrorAction SilentlyContinue
+            if ($existing){
+                $module.msg += "[re-add] Host '$esxi_host' already present"
+                $module.status = "NoChange"
+                $module.changed = $false
+                Exit-Json
+            }
+
+            $dcObj = Get-Datacenter -Name $target_datacenter -Server $vcConn -ErrorAction Stop
+            if ($target_cluster) {
+                $locationObj = Get-Cluster -Name $target_cluster -Location $dcObj -Server $vcConn -ErrorAction Stop
+                $module.msg += "[re-add] Target location: DC='$target_datacenter', cluster='$target_cluster' `n"
             } else {
                 $locationObj = $dcObj
+                $module.msg += "[re-add] Target location: DC='$target_datacenter', no cluster `n"
             }
             $vmhost = Add-VMHost -Name $esxi_host `
                 -Location $locationObj`
                 -User $esxi_user `
-                -Password $esxi_password
+                -Password $esxi_password `
+                -Force -ErrorAction Stop
 
             Set-VMHost -VMHost $vmhost -State Connected -ErrorAction SilentlyContinue | Out-Null
-
-            Write-Host "ESXi host has been 're-added' successfully"
+            $module.msg += "[re-add] ESXi '$esxi_host' re-added successfully. `n"
+            $module.status = "Success"
+            $module.changed = $true
+            Exit-Json        
         }
         catch {
-            Write-Host "Error while adding ESXi host in vCenter"
+            $module.failed = $true
+            $module.status = "Error"
+            $module.msg   += "[re-add] Failed: $($_.Exception.Message)`n"
+            Exit-Json $module
         }
     }
     else {

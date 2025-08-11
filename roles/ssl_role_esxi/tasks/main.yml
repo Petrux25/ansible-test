@@ -173,7 +173,8 @@
         esxi_host: "{{ esxi_host }}"
         esxi_user: "{{ esxi_user }}"
         esxi_password: "{{ esxi_password }}"
-
+        target_datacenter: "{{ remove_out.data.HostLocation.Datacenter }}"
+        target_cluster: "{{ remove_out.data.HostLocation.Cluster }}"
       register: esxi_add_out
 
   rescue:
