@@ -79,6 +79,11 @@
         vcenter_password: "{{ vcenter_password }}"
       register: remove_out
 
+    - name: Declare new variable
+      ansible.builtin.set_fact:
+        target_datacenter: "{{ remove_out.data.HostLocation.Datacenter | from_json  }}"
+        target_cluster: "{{ remove_out.data.HostLocation.Cluster | from_json  }}"
+
   rescue:
 
     - name: Show error messsage
@@ -173,8 +178,8 @@
         esxi_host: "{{ esxi_host }}"
         esxi_user: "{{ esxi_user }}"
         esxi_password: "{{ esxi_password }}"
-        target_datacenter: "{{ remove_out.data.HostLocation.Datacenter }}"
-        target_cluster: "{{ remove_out.data.HostLocation.Cluster }}"
+        target_datacenter: "{{ target_datacenter }}"
+        target_cluster: "{{ target_cluster }}"
       register: esxi_add_out
 
   rescue:
