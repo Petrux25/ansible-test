@@ -24,6 +24,8 @@ $vcenter_server   = Get-AnsibleParam -obj $params -name "vcenter_server" -type "
 $vcenter_user     = Get-AnsibleParam -obj $params -name "vcenter_user" -type "str" -failifempty $false
 $vcenter_password = Get-AnsibleParam -obj $params -name "vcenter_password" -type "str" -secret $true -failifempty $false
 $esxi_location    = Get-AnsibleParam -obj $params -name "esxi_location" -type "str" -failifempty $false
+$target_datacenter = Get-AnsibleParam -obj $params -name "target_datacenter" -type "str" -failifempty $false
+$target_cluster = Get-AnsibleParam -obj $params -name "target_cluster" -type "str" -failifempty $false
 
 
 function update-error([string] $description) {
