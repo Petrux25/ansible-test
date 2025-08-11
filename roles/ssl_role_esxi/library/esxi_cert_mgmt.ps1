@@ -219,6 +219,12 @@ try {
             $module.msg += "[re-add] Inputs -> Host: $esxi_host, DC: $target_datacenter, cluster: $target_cluster."
             if (-not $target_datacenter) {throw "No location found for ESXi host in module data"}
         
+
+            $target_datacenter = ($target_datacenter | ForEach-Object { $_.ToString() }) -replace '\r|\n', ''
+            $target_cluster  = ($target_cluster | ForEach-Object { $_.ToString() }) -replace '\r|\n', ''
+            $target_datacenter = $target_datacenter.Trim() 
+            $target_cluster = $target_cluster.Trim()
+
             $vcConn = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop
             $module.msg += "[re-add] Connected to vCenter $vcenter_server `n"
             $existing = Get-VMHost -Name $esxi_host -Server $vcConn -ErrorAction SilentlyContinue
@@ -231,7 +237,9 @@ try {
 
             $dcObj = Get-Datacenter -Name $target_datacenter -Server $vcConn -ErrorAction Stop
             if ($target_cluster) {
-                $locationObj = Get-Cluster -Name $target_cluster -Location $dcObj -Server $vcConn -ErrorAction Stop
+                $clusterObj = Get-Cluster -Server $vcConn -Location $dcObj | Where-Object { $_.Name -eq $target_cluster} -ErrorAction SilentlyContinue
+                if (-not $clusterObj){ throw "Cluster not found"}
+                $locationObj = $clusterObj
                 $module.msg += "[re-add] Target location: DC='$target_datacenter', cluster='$target_cluster' `n"
             } else {
                 $locationObj = $dcObj
