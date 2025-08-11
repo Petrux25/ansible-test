@@ -114,26 +114,26 @@
     # - name: End all tasks for this host
     #   ansible.builtin.meta: end_host
 
-- name: connect to esx, replace machine ssl and restart
-  block:
-    - name: replace machine ssl and restart
-      esxi_cert_mgmt:
-        esxi_action: "replace_cert"
-        esxi_cert_path: "{{ esxi_cert_path }}"
-        esxi_host: "{{ esxi_host }}"
-        esxi_user: "{{ esxi_user }}"
-        esxi_password: "{{ esxi_password }}"
-      register: replace_mssl_out
+# - name: connect to esx, replace machine ssl and restart
+#   block:
+#     - name: replace machine ssl and restart
+#       esxi_cert_mgmt:
+#         esxi_action: "replace_cert"
+#         esxi_cert_path: "{{ esxi_cert_path }}"
+#         esxi_host: "{{ esxi_host }}"
+#         esxi_user: "{{ esxi_user }}"
+#         esxi_password: "{{ esxi_password }}"
+#       register: replace_mssl_out
 
-  rescue:
+#   rescue:
 
-    - name: Show error messsage
-      ansible.builtin.debug:
-        msg: "Error while replacing certificate"
+#     - name: Show error messsage
+#       ansible.builtin.debug:
+#         msg: "Error while replacing certificate"
 
-    - name: fail
-      ansible.builtin.fail:
-        msg: "Failed to replace certificate"
+#     - name: fail
+#       ansible.builtin.fail:
+#         msg: "Failed to replace certificate"
 
     # - name: Set error message
     #   ansible.builtin.set_fact:
@@ -173,6 +173,7 @@
         esxi_host: "{{ esxi_host }}"
         esxi_user: "{{ esxi_user }}"
         esxi_password: "{{ esxi_password }}"
+
       register: esxi_add_out
 
   rescue:

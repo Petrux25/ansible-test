@@ -121,7 +121,7 @@ try {
             $datacenter = ($vmhost | Get-Datacenter -Server $vcConn).Name
             $cluster = ($vmhost | Get-Cluster -Server $vcConn).Name
 
-            if (-not $module.data) { module.data = @{} }
+            if (-not $module.data) { $module.data = @{} }
 
             $esx_location = @{
                 Datacenter = $datacenter
