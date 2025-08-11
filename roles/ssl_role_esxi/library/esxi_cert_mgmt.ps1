@@ -120,8 +120,8 @@ try {
             if (-not $vmhost) {throw "No host found with that name"}
 
             #Saving ESXi location info 
-            $datacenter = ($vmhost | Get-Datacenter -Server $vcConn).Name
-            $cluster = ($vmhost | Get-Cluster -Server $vcConn).Name
+            $datacenter = ($vmhost | Get-Datacenter -Server $vcConn).Name.replace("`n",", ").replace("`r",", ")
+            $cluster = ($vmhost | Get-Cluster -Server $vcConn).Name.replace("`n",", ").replace("`r",", ")
 
             if (-not $module.data) { $module.data = @{} }
 
