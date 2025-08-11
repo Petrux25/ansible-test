@@ -58,29 +58,44 @@ try {
             Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false | Out-Null
             $vcConn = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop
             $esxi = Get-VMHost -Name $esxi_host
-
-
-            $stoppedvms = @()
-            $vmstopoweroff = Get-VM -Server $vcConn | Where-Object { $_.VMHost -eq $esxi -and $_.PowerState -eq "PoweredOn" }
-            foreach ($vm in $vmstopoweroff) { 
-                Write-Host "Turning off VM: $($vm.Name)" 
-                Stop-VM -VM $vm -Confirm:$false
-                $stoppedvms += $vm.Name
+            
+            if (-not $esxi){ throw "Host $esxi_host not found in vCenter"
             }
 
-    
-            do {
-                $poweredOnVMs = Get-VM -Server $vcConn | Where-Object { $_.VMHost -eq $esxi -and $_.PowerState -eq "PoweredOn" }
-                if ($poweredOnVMs.Count -gt 0) {
-                    Write-Host "Waiting for VMs to be powered off..."
-                    Start-Sleep -Seconds 5
-                }
-            } while ($poweredOnVMs.Count -gt 0)
+            #turning off vms 
+            $stoppedvms = @()
+            $vmstopoweroff = Get-VM -Server $vcConn | Where-Object { $_.VMHost -eq $esxi -and $_.PowerState -eq "PoweredOn" }
 
+            if ($vmstopoweroff){ 
+                foreach ($vm in $vmstopoweroff) { 
+                    Write-Host "Turning off VM: $($vm.Name)" 
+                    Stop-VM -VM $vm -Confirm:$false
+                    $stoppedvms += $vm.Name
+                }
+
+                do {
+                    $poweredOnVMs = Get-VM -Server $vcConn | Where-Object { $_.VMHost -eq $esxi -and $_.PowerState -eq "PoweredOn" }
+                    if ($poweredOnVMs.Count -gt 0) {
+                        Write-Host "Waiting for VMs to be powered off..."
+                        Start-Sleep -Seconds 5
+                    }
+                } while ($poweredOnVMs.Count -gt 0)
+            }
+            else{
+                Write-Host "No VMs found in host"
+            }
+
+
+            Write-Host "Starting to configure maintenance mode..."
             Set-VMHost -VMHost $esxi -State Maintenance
+
+
             $module.msg += "ESXi host $esxi_host set to maintenance mode. "
 
-            $module.data = $stoppedvms
+            $module.data = @{
+                PoweredOffVMs = $stoppedvms
+            }
+            Write-Host "The following VMs were turned off: $($stoppedvms -join ', ')"
             
             $module.changed = $true
             $module.status = "Success"
@@ -96,9 +111,30 @@ try {
             $vcConn = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop
             $vmhost = Get-VMHost -Name $esxi_host -Server $vcConn
             
-            #find all VDSwitches associated with host
+            if ($vmhost.State -ne "Maintenance") {
+                throw "Host '$($vmhost.Name)' is not in maintenance mode"
+            }
 
-            $vdSwitches = Get-VDSwitch -VMHost $vmhost -Server $vcConn
+            if (-not $vmhost) {throw "No host found with that name"}
+
+            #Saving ESXi location info 
+            $datacenter = ($vmhost | Get-Datacenter -Server $vcConn).Name
+            $cluster = ($vmhost | Get-Cluster -Server $vcConn).Name
+
+            if (-not $module.data) { module.data = @{} }
+
+            $esx_location = @{
+                Datacenter = $datacenter
+                Cluster = $cluster
+            }
+            if (-not $module.data) { $module.data = @{} }
+            $module.data.HostLocation = $esx_location
+
+            Write-Host "Host location: "
+            Write-Host "Datacenter: $datacenter"
+            Write-Host "Cluster: $cluster"
+
+            $vdSwitches = Get-VDSwitch -VMHost $vmhost -Server $vcConn -ErrorAction SilentlyContinue
 
             if ($vdSwitches) {
                 Write-Host "$esxi_host is connected to the following VDS: $($vdSwitches.Name -join ',')"
@@ -120,6 +156,8 @@ try {
             } else {
                 Write-Host "$esxi_host is not connected to a VDS"
             }
+            #verifying if esx connectivity 
+            
             Write-Host "Removing $esxi_host from vCenter"
             Remove-VMHost $vmhost -Confirm:$false
             Write-Host "ESXi has been removed successfully"
@@ -136,43 +174,69 @@ try {
     }
 
     # --- Replace ESXi certificate ---
-elseif ($esxi_action -eq "replace_cert") {
-    try {
-        # 1. Conectar directamente al host ESXi
-        Write-Host "Connecting directly to ESXi host: $esxi_host"
-        $esxConnection = Connect-VIServer -Server $esxi_host -User $esxi_user -Password $esxi_password -Force -ErrorAction Stop
-        
-        # 2. Leer el nuevo certificado desde el archivo .pem
-        Write-Host "Reading certificate from: $esxi_cert_path"
-        $esxCertificatePem = Get-Content -Raw -Path $esxi_cert_path
-        
-        # 3. Obtener el objeto del host para el comando
-        $targetEsxHost = Get-VMHost -Name $esxi_host -Server $esxConnection
-        
-        # 4. Establecer el nuevo certificado de máquina en el host
-        Write-Host "Setting new machine certificate on $esxi_host..."
-        Set-VIMachineCertificate -PemCertificate $esxCertificatePem -VMHost $targetEsxHost | Out-Null
-        
-        # 5. Reiniciar el host para que el cambio de certificado tenga efecto (mandatorio)
-        Write-Host "Restarting host $esxi_host to apply certificate changes..."
-        Restart-VMHost -VMHost $targetEsxHost -Confirm:$false
-        
-        $module.msg = "New certificate has been set on $esxi_host. A host reboot has been initiated."
-        $module.changed = $true
-        $module.status = "Success"
-        
-        # No se desconecta aquí porque el host se está reiniciando
-        
-    } catch {
-        update-error "Failed to replace certificate on ESXi host $esxi_host"
-        # Intentar desconectar si la conexión aún existe
-        if (Get-VIServer -Server $esxi_host -ErrorAction SilentlyContinue) {
-            Disconnect-VIServer -Server $esxi_host -Confirm:$false
+    elseif ($esxi_action -eq "replace_cert") {
+        try {
+            # 1. Conectar directamente al host ESXi
+            Write-Host "Connecting directly to ESXi host: $esxi_host"
+            $esxConnection = Connect-VIServer -Server $esxi_host -User $esxi_user -Password $esxi_password -Force -ErrorAction Stop
+            
+            # 2. Leer el nuevo certificado desde el archivo .pem
+            Write-Host "Reading certificate from: $esxi_cert_path"
+            $esxCertificatePem = Get-Content -Raw -Path $esxi_cert_path
+            
+            # 3. Obtener el objeto del host para el comando
+            $targetEsxHost = Get-VMHost -Name $esxi_host -Server $esxConnection
+            
+            # 4. Establecer el nuevo certificado de máquina en el host
+            Write-Host "Setting new machine certificate on $esxi_host..."
+            Set-VIMachineCertificate -PemCertificate $esxCertificatePem -VMHost $targetEsxHost | Out-Null
+            
+            # 5. Reiniciar el host para que el cambio de certificado tenga efecto (mandatorio)
+            Write-Host "Restarting host $esxi_host to apply certificate changes..."
+            Restart-VMHost -VMHost $targetEsxHost -Confirm:$false
+            
+            $module.msg = "New certificate has been set on $esxi_host. A host reboot has been initiated."
+            $module.changed = $true
+            $module.status = "Success"
+            
+            # No se desconecta aquí porque el host se está reiniciando
+            
+        } catch {
+            update-error "Failed to replace certificate on ESXi host $esxi_host"
+            # Intentar desconectar si la conexión aún existe
+            if (Get-VIServer -Server $esxi_host -ErrorAction SilentlyContinue) {
+                Disconnect-VIServer -Server $esxi_host -Confirm:$false
+            }
+            Exit-Json $module
         }
-        Exit-Json $module
     }
-}
 
+    elseif ($esxi_action -eq "re-add") {
+        try {
+            if (-not $module.data.HostLocation) {throw "No location found for ESXi host in module data"}
+            $datacenter = $module.data.HostLocation.Datacenter
+            $cluster = $module.data.HostLocation.Cluster   
+            
+            $vcConn = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop
+            $dcObj = Get-Datacenter -Name $datacenter -Server $vcConn -ErrorAction Stop
+            if ($cluster) {
+                $locationObj = Get-Cluster -Name $cluster -Location $dcObj -Server $vcConn -ErrorAction Stop
+            } else {
+                $locationObj = $dcObj
+            }
+            $vmhost = Add-VMHost -Name $esxi_host `
+                -Location $locationObj`
+                -User $esxi_user `
+                -Password $esxi_password
+
+            Set-VMHost -VMHost $vmhost -State Connected -ErrorAction SilentlyContinue | Out-Null
+
+            Write-Host "ESXi host has been 're-added' successfully"
+        }
+        catch {
+            Write-Host "Error while adding ESXi host in vCenter"
+        }
+    }
     else {
         update-error "Unsupported esxi_action: $esxi_action"
         Exit-Json $module
