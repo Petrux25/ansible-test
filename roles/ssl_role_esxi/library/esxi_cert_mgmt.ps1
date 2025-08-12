@@ -119,18 +119,19 @@ try {
 
             if (-not $vmhost) {throw "No host found with that name"}
 
-            #alt 1
-            #$datacenterName = $vmhost.Datacenter.Name.Trim()
-            #$parent = $vmhost.Parent
-            #$clusterName = ""
+            
+            $datacenter = ($vmhost | Get-Datacenter -Server $vcConn).Name
+            $cluster = ($vmhost | Get-Cluster -Server $vcConn -ErrorAction SilentlyContinue).Name
 
-            #if ($parent -is [VMware.VimAutomation.ViCore.Impl.V1.Inventory.ClusterComputerResource]) {
-                #$clusterName = $parent.Name.Trim()
-            #}
-
-            #alt 2
-            $datacenter = ($vmhost | Get-Datacenter -Server $vcConn).Name.replace("`n",", ").replace("`r",", ")
-            $cluster = ($vmhost | Get-Cluster -Server $vcConn).Name.replace("`n",", ").replace("`r",", ")
+            #Después (limpia control chars y trim)
+            $datacenter = (($vmhost | Get-Datacenter -Server $vcConn).Name | ForEach-Object { $_.ToString() })
+            $cluster    = (($vmhost | Get-Cluster    -Server $vcConn -ErrorAction SilentlyContinue).Name | ForEach-Object { $_.ToString() })
+            
+            $datacenter = $datacenter -replace '[\x00-\x1F]',''
+            $cluster    = $cluster    -replace '[\x00-\x1F]',''
+            
+            $datacenter = $datacenter.Trim()
+            $cluster    = $cluster.Trim()
 
             if (-not $module.data) { $module.data = @{} }
 
@@ -149,7 +150,8 @@ try {
 
             if ($vdSwitches) {
                 Write-Host "$esxi_host is connected to the following VDS: $($vdSwitches.Name -join ',')"
-                $module.data = @{ RemovedFromVDSwitches = $vdSwitches.Name }
+                if (-not $module.data) { $module.data = @{} }
+                $module.data.RemovedVDSwitches = $vdSwitches.Name
 
                 foreach ($vds in $vdSwitches) {
                     #find VMkernel adapters used in VDS
@@ -226,10 +228,13 @@ try {
             #log de entrada 
             $module.msg += "[re-add] Inputs -> Host: $esxi_host, DC: $target_datacenter, cluster: $target_cluster."
             if (-not $target_datacenter) {throw "No location found for ESXi host in module data"}
-        
+            $target_datacenter = ($target_datacenter | ForEach-Object { $_.ToString() })
+            $target_cluster    = ($target_cluster    | ForEach-Object { $_.ToString() })
+            $target_datacenter = $target_datacenter -replace '[\x00-\x1F]',''
+            $target_cluster    = $target_cluster    -replace '[\x00-\x1F]',''
+            $target_datacenter = $target_datacenter.Trim()
+            $target_cluster    = $target_cluster.Trim()
 
-            $target_datacenter = $target_datacenter.Trim() 
-            $target_cluster = $target_cluster.Trim()
 
             $vcConn = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop
             $module.msg += "[re-add] Connected to vCenter $vcenter_server `n"
@@ -243,16 +248,16 @@ try {
             }
 
             $dcObj = Get-Datacenter -Name $target_datacenter -Server $vcConn -ErrorAction Stop
-
             if ($target_cluster) {
-                $clusterObj = Get-Cluster -Name $target_cluster -Location $dcObj -ErrorAction Stop
-                if (-not $clusterObj){ throw "Cluster not found"}
+                $clusterObj = Get-Cluster -Server $vcConn -Location $dcObj | Where-Object { $_.Name -eq $target_cluster }
+                if (-not $clusterObj) { throw "Cluster '$target_cluster' not found in Datacenter '$target_datacenter'." }
                 $locationObj = $clusterObj
-                $module.msg += "[re-add] Target location: DC='$target_datacenter', cluster='$target_cluster' `n"
+                $module.msg += "[re-add] Target location: DC='$target_datacenter', Cluster='$target_cluster'`n"
             } else {
                 $locationObj = $dcObj
-                $module.msg += "[re-add] Target location: DC='$target_datacenter', no cluster `n"
+                $module.msg += "[re-add] Target location: DC='$target_datacenter' (no cluster)`n"
             }
+
             $vmhost = Add-VMHost -Name $esxi_host `
                 -Location $locationObj`
                 -User $esxi_user `
