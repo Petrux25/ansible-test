@@ -78,10 +78,14 @@
         vcenter_user: "{{ vcenter_user }}"
         vcenter_password: "{{ vcenter_password }}"
       register: remove_out
+      
+    - name: Declare cleaned location variable
+      ansible.builtin.set_fact:
+        target_dataceter: "{{ remove_out.data.HostLocation.Datacenter | regex_replace('\\r|\\n|\\t','') | trim }}"
+        target_cluster: "{{ remove_out.data.HostLocation.Cluster | default('') | regex_replace('\\r|\\n|\\t','') | trim }}"
 
 
   rescue:
-
     - name: Show error messsage
       ansible.builtin.debug:
         msg: "Error maintenance mode"
@@ -174,8 +178,8 @@
         esxi_host: "{{ esxi_host }}"
         esxi_user: "{{ esxi_user }}"
         esxi_password: "{{ esxi_password }}"
-        target_datacenter: "{{ remove_out.data.HostLocation.Datacenter }}"
-        target_cluster: "{{ remove_out.data.HostLocation.Cluster | default('') }}"
+        target_dataceter: "{{ target_dataceter }}"
+        target_cluster: "{{ target_cluster }}"
       register: esxi_add_out
 
   rescue:
