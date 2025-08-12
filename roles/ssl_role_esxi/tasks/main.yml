@@ -78,12 +78,7 @@
         vcenter_user: "{{ vcenter_user }}"
         vcenter_password: "{{ vcenter_password }}"
       register: remove_out
-
-    - name: Declare new variable
-      ansible.builtin.set_fact:
-        target_datacenter: "{{ remove_out.data.HostLocation.Datacenter | from_json  }}"
-        target_cluster: "{{ remove_out.data.HostLocation.Cluster | from_json  }}"
-
+     
   rescue:
 
     - name: Show error messsage
