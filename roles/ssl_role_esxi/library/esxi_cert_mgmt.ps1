@@ -119,7 +119,16 @@ try {
 
             if (-not $vmhost) {throw "No host found with that name"}
 
-            #Saving ESXi location info 
+            #alt 1
+            $datacenterName = $vmhost.Datacenter.Name.Trim()
+            $parent = $vmhost.Parent
+            $clusterName = ""
+
+            if ($parent -is [VMware.VimAutomation.ViCore.Impl.V1.Inventory.ClusterComputerResource]) {
+                $clusterName = $parent.Name.Trim()
+            }
+
+            #alt 2
             $datacenter = ($vmhost | Get-Datacenter -Server $vcConn).Name.replace("`n",", ").replace("`r",", ")
             $cluster = ($vmhost | Get-Cluster -Server $vcConn).Name.replace("`n",", ").replace("`r",", ")
 
@@ -225,6 +234,7 @@ try {
 
             $vcConn = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop
             $module.msg += "[re-add] Connected to vCenter $vcenter_server `n"
+
             $existing = Get-VMHost -Name $esxi_host -Server $vcConn -ErrorAction SilentlyContinue
             if ($existing){
                 $module.msg += "[re-add] Host '$esxi_host' already present"
@@ -234,6 +244,7 @@ try {
             }
 
             $dcObj = Get-Datacenter -Name $target_datacenter -Server $vcConn -ErrorAction Stop
+
             if ($target_cluster) {
                 $clusterObj = Get-Cluster -Name $target_cluster -Location $dcObj -ErrorAction Stop
                 if (-not $clusterObj){ throw "Cluster not found"}

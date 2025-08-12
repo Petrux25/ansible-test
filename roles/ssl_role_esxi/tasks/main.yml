@@ -78,7 +78,8 @@
         vcenter_user: "{{ vcenter_user }}"
         vcenter_password: "{{ vcenter_password }}"
       register: remove_out
-     
+
+
   rescue:
 
     - name: Show error messsage
