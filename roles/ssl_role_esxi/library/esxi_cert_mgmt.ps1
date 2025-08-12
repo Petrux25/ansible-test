@@ -258,17 +258,22 @@ try {
                 $module.msg += "[re-add] Target location: DC='$target_datacenter' (no cluster)`n"
             }
 
-            $vmhost = Add-VMHost -Name $esxi_host `
-                -Location $locationObj`
-                -User $esxi_user `
-                -Password $esxi_password `
-                -Force -ErrorAction Stop
-
-            Set-VMHost -VMHost $vmhost -State Connected -ErrorAction SilentlyContinue | Out-Null
-            $module.msg += "[re-add] ESXi '$esxi_host' re-added successfully. `n"
-            $module.status = "Success"
-            $module.changed = $true
-            Exit-Json        
+            $addParams = @{
+                Name        = $esxi_host
+                Location    = $locationObj
+                User        = $esxi_user
+                Password    = $esxi_password
+                Force       = $true
+                ErrorAction = 'Stop'
+              }
+              
+              $vmhost = Add-VMHost @addParams
+              
+              Set-VMHost -VMHost $vmhost -State Connected -ErrorAction SilentlyContinue | Out-Null
+              $module.msg += "[re-add] ESXi '$esxi_host' re-added successfully.`n"
+              $module.status = "Success"
+              $module.changed = $true
+              Exit-Json $module      
         }
         catch {
             $module.failed = $true
