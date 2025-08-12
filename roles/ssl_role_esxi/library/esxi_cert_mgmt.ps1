@@ -120,13 +120,13 @@ try {
             if (-not $vmhost) {throw "No host found with that name"}
 
             #alt 1
-            $datacenterName = $vmhost.Datacenter.Name.Trim()
-            $parent = $vmhost.Parent
-            $clusterName = ""
+            #$datacenterName = $vmhost.Datacenter.Name.Trim()
+            #$parent = $vmhost.Parent
+            #$clusterName = ""
 
-            if ($parent -is [VMware.VimAutomation.ViCore.Impl.V1.Inventory.ClusterComputerResource]) {
-                $clusterName = $parent.Name.Trim()
-            }
+            #if ($parent -is [VMware.VimAutomation.ViCore.Impl.V1.Inventory.ClusterComputerResource]) {
+                #$clusterName = $parent.Name.Trim()
+            #}
 
             #alt 2
             $datacenter = ($vmhost | Get-Datacenter -Server $vcConn).Name.replace("`n",", ").replace("`r",", ")
