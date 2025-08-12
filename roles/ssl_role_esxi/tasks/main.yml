@@ -179,7 +179,7 @@
         esxi_host: "{{ esxi_host }}"
         esxi_user: "{{ esxi_user }}"
         esxi_password: "{{ esxi_password }}"
-        target_dataceter: "{{ target_dataceter }}"
+        target_datacenter: "{{ target_datacenter }}"
         target_cluster: "{{ target_cluster }}"
       register: esxi_add_out
 

@@ -173,7 +173,6 @@ try {
             Remove-VMHost $vmhost -Confirm:$false
             Write-Host "ESXi has been removed successfully"
 
-
             $module.msg += "ESXi $esxi_host has been removed from vCenter."
             $module.changed = $true
             $module.status = "Success"
