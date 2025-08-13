@@ -168,6 +168,48 @@
 
   # --- Step 3, re-add ESXi server to the vcenter
 
+- name: Wait for the ESXi host to complete reboot and become available
+  block:
+    - name: Wait for ESXi host to come online
+      ansible.builtin.wait_for_connection:
+        delay: 30       # Segundos a esperar antes de empezar a verificar
+        sleep: 10       # Segundos a esperar entre cada intento
+        timeout: 300    # Tiempo máximo de espera en segundos (10 minutos)
+      delegate_to: localhost
+
+  rescue:
+    - name: Show error messsage
+      ansible.builtin.debug:
+        msg: "Error waiting for ESXi host to come online"
+
+    - name: fail
+      ansible.builtin.fail:
+        msg: "Failed to wait for ESXi host to come online"
+
+    # - name: Set error message
+    #   ansible.builtin.set_fact:
+    #     assert_msg: >
+    #       An error has occurred.
+    #       {% if "wait for" in ansible_failed_result.msg | d('') %}Timeout waiting for ESXi host to come online.{% endif %}
+
+    # - name: RC in case of failure
+    #   ansible.builtin.include_role:
+    #     name: ansible_role_returncode
+    #   vars:
+    #     rc_support: account
+    #     rc_group: framework_playbook
+    #     rc_number: 2200
+    #     rc_message: "{{ assert_msg }}"
+
+    # - name: Set exit flag
+    #   ansible.builtin.set_fact:
+    #     validate_rc_error: true
+    #   delegate_facts: true
+    #   delegate_to: localhost
+
+    # - name: End all tasks for this host
+    #   ansible.builtin.meta: end_host
+
 - name: re-add the ESXi to the vCenter
   block:
     - name: re-add the esx server
