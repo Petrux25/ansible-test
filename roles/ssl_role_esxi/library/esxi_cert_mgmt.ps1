@@ -210,9 +210,7 @@ try {
             $module.msg = "New certificate has been set on $esxi_host. A host reboot has been initiated."
             $module.changed = $true
             $module.status = "Success"
-            
-            # No se desconecta aquí porque el host se está reiniciando
-            
+                        
         } catch {
             update-error "Failed to replace certificate on ESXi host $esxi_host"
             # Intentar desconectar si la conexión aún existe
