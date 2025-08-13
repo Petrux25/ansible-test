@@ -188,6 +188,8 @@ try {
     # --- Replace ESXi certificate ---
     elseif ($esxi_action -eq "replace_cert") {
         try {
+
+            Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false
             # 1. Conectar directamente al host ESXi
             Write-Host "Connecting directly to ESXi host: $esxi_host"
 
