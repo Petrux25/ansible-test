@@ -190,7 +190,7 @@ try {
         try {
             # 1. Conectar directamente al host ESXi
             Write-Host "Connecting directly to ESXi host: $esxi_host"
-            $esxConnection = Connect-VIServer -Server $esxi_host -User $esxi_user -Password $esxi_password -Force -ErrorAction Stop
+            $esxConnection = Connect-VIServer -Server 'esx001.local.com' -User 'root' -Password '!Passw0rd' -Force -ErrorAction Stop
             
             # 2. Leer el nuevo certificado desde el archivo .pem
             Write-Host "Reading certificate from: $esxi_cert_path"
