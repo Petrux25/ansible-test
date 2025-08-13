@@ -201,11 +201,11 @@ try {
             
             # 4. Establecer el nuevo certificado de máquina en el host
             Write-Host "Setting new machine certificate on $esxi_host..."
-            Set-VIMachineCertificate -PemCertificate $esxCertificatePem -VMHost $targetEsxHost | Out-Null
+            Set-VIMachineCertificate -PemCertificate $esxCertificatePem -VMHost $targetEsxHost -Confirm:$false | Out-Null
             
             # 5. Reiniciar el host para que el cambio de certificado tenga efecto (mandatorio)
             Write-Host "Restarting host $esxi_host to apply certificate changes..."
-            Restart-VMHost -VMHost $targetEsxHost -Confirm:$false
+            Restart-VMHost -VMHost $targetEsxHost -Confirm:$false 
             
             $module.msg = "New certificate has been set on $esxi_host. A host reboot has been initiated."
             $module.changed = $true
