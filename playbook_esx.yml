@@ -28,4 +28,3 @@
         esxi_user: "root"
         esxi_password: "!Passw0rd"
         esxi_cert_path: "C:\\Users\\diego.velasquez_rem\\Desktop\\ansible-test\\certnew_15.cer"
-        
