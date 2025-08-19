@@ -214,6 +214,8 @@ try {
             $module.msg = "New certificate has been set on $esxi_host. A host reboot has been initiated."
             $module.changed = $true
             $module.status = "Success"
+
+            Disconnect-VIServer $esxConnection -Confirm:$false
                         
         } catch {
             update-error "Failed to replace certificate on ESXi host $esxi_host"
