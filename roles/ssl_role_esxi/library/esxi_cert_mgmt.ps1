@@ -23,7 +23,6 @@ $esxi_cert_path   = Get-AnsibleParam -obj $params -name "esxi_cert_path" -type "
 $vcenter_server   = Get-AnsibleParam -obj $params -name "vcenter_server" -type "str" -failifempty $false
 $vcenter_user     = Get-AnsibleParam -obj $params -name "vcenter_user" -type "str" -failifempty $false
 $vcenter_password = Get-AnsibleParam -obj $params -name "vcenter_password" -type "str" -secret $true -failifempty $false
-$esxi_location    = Get-AnsibleParam -obj $params -name "esxi_location" -type "str" -failifempty $false
 $target_datacenter = Get-AnsibleParam -obj $params -name "target_datacenter" -type "str" -failifempty $false
 $target_cluster = Get-AnsibleParam -obj $params -name "target_cluster" -type "str" -failifempty $false
 
@@ -195,8 +194,11 @@ try {
             # 1. Conectar directamente al host ESXi
             Write-Host "Connecting directly to ESXi host: $esxi_host"
 
+            Write-Host "Usuario: $esxi_user "
+            Write-Host "Contrasena: $esxi_password"
 
-            $esxConnection = Connect-VIServer -Server $esxi_host -User $esxi_user -Password $esxi_password -ErrorAction Stop -Confirm:$false
+
+            $esxConnection = Connect-VIServer -Server $esxi_host -User 'root' -Password '!Passw0rd' -ErrorAction Stop -Confirm:$false
 
             # 2. Leer el nuevo certificado desde el archivo .pem
             Write-Host "Reading certificate from: $esxi_cert_path"
