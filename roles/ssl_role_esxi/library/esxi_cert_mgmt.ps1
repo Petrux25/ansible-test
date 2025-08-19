@@ -110,15 +110,17 @@ try {
 
     elseif ($esxi_action -eq "remove") {
         try {
+            Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false | Out-Null
             $vcConn = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop
-            $vmhost = Get-VMHost -Name $esxi_host -Server $vcConn
             
+            $vmhost = Get-VMHost -Name $esxi_host -Server $vcConn
+            if (-not $vmhost) {
+                throw "Host '$esxi_host' not found in vCenter"
+            }
+
             if ($vmhost.State -ne "Maintenance") {
                 throw "Host '$($vmhost.Name)' is not in maintenance mode"
             }
-
-            if (-not $vmhost) {throw "No host found with that name"}
-
             
             $datacenter = ($vmhost | Get-Datacenter -Server $vcConn).Name
             $cluster = ($vmhost | Get-Cluster -Server $vcConn -ErrorAction SilentlyContinue).Name
