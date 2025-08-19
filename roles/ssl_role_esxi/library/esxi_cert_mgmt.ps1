@@ -190,6 +190,16 @@ try {
     elseif ($esxi_action -eq "replace_cert") {
         try {
 
+            if (-not $esxi_host -or $esxi_host.Trim() -eq "")      { throw "esxi_host vacío" }
+            if (-not $esxi_user -or $esxi_user.Trim() -eq "")      { throw "esxi_user vacío" }
+            if (-not $esxi_password -or $esxi_password -eq "")     { throw "esxi_password vacío" }
+            if (-not $esxi_cert_path -or -not (Test-Path $esxi_cert_path)) { throw "Cert no existe: $esxi_cert_path" }
+
+            Set-PowerCLIConfiguration -Scope User    -ParticipateInCEIP:$false -InvalidCertificateAction Ignore -Confirm:$false | Out-Null
+            Set-PowerCLIConfiguration -Scope Session -ParticipateInCEIP:$false -InvalidCertificateAction Ignore -Confirm:$false | Out-Null
+            Set-PowerCLIConfiguration -ProxyPolicy NoProxy -Confirm:$false | Out-Null
+
+
             Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false
             # 1. Conectar directamente al host ESXi
             Write-Host "Connecting directly to ESXi host: $esxi_host"
@@ -198,11 +208,11 @@ try {
             Write-Host "Contrasena: $esxi_password"
 
 
-            $esxConnection = Connect-VIServer -Server $esxi_host -User 'root' -Password '!Passw0rd' -ErrorAction Stop -Confirm:$false
+            $esxConnection = Connect-VIServer -Server 'esx001.local.com' -User 'root' -Password '!Passw0rd' -ErrorAction Stop -Confirm:$false
 
             # 2. Leer el nuevo certificado desde el archivo .pem
             Write-Host "Reading certificate from: $esxi_cert_path"
-            $esxCertificatePem = Get-Content -Raw -Path $esxi_cert_path
+            $esxCertificatePem = Get-Content $esxi_cert_path -Raw -Path
             
             # 3. Obtener el objeto del host para el comando
             $targetEsxHost = Get-VMHost -Name $esxi_host -Server $esxConnection
