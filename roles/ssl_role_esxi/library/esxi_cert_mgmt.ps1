@@ -199,7 +199,30 @@ try {
             Set-PowerCLIConfiguration -Scope Session -ParticipateInCEIP:$false -InvalidCertificateAction Ignore -Confirm:$false | Out-Null
             Set-PowerCLIConfiguration -ProxyPolicy NoProxy -Confirm:$false | Out-Null
 
+            Set-Step "connect-esxi($esxi_host)"
+            $esxConnection = Connect-VIServer -Server $esxi_host -User $esxi_user -Password $esxi_password -Force -ErrorAction Stop
+            
+            Set-Step "get-esxi-object($esxi_host)"
+            # TIE el objeto al server de arriba
+            $targetEsxHost = Get-VMHost -Server $esxConnection -Name $esxi_host -ErrorAction Stop
 
+            Set-Step "read-cert($esxi_cert_path)"
+            $esxCertificatePem = Get-Content -Raw -Path $esxi_cert_path
+            if ($esxCertificatePem -notmatch '-----BEGIN CERTIFICATE-----') {
+            throw "El archivo no está en formato PEM (texto). Conviértelo a PEM antes de aplicarlo."
+            }
+
+            Set-Step "set-machine-cert($esxi_host)"
+            Set-VIMachineCertificate -PemCertificate $esxCertificatePem -VMHost $targetEsxHost -Confirm:$false -ErrorAction Stop | Out-Null
+
+            Set-Step "reboot-esxi($esxi_host)"
+            Restart-VMHost -VMHost $targetEsxHost -Confirm:$false -ErrorAction Stop | Out-Null
+
+            $module.msg     = "New certificate has been set on $esxi_host. A host reboot has been initiated."
+            $module.changed = $true
+            $module.status  = "Success"
+            if ($esxConnection) { Disconnect-VIServer -Server $esxConnection -Confirm:$false | Out-Null } 
+            
             Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false
             # 1. Conectar directamente al host ESXi
             Write-Host "Connecting directly to ESXi host: $esxi_host"
