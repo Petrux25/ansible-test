@@ -120,6 +120,14 @@
     # - name: End all tasks for this host
     #   ansible.builtin.meta: end_host
 
+- name: "DEBUG: Verificar credenciales de ESXi ANTES de reemplazar el certificado"
+  ansible.builtin.debug:
+    msg:
+      - "Host a conectar: '{{ esxi_host }}'"
+      - "Usuario a usar: '{{ esxi_user }}'"
+      - "Contraseña a usar: '{{ esxi_password }}' (Verifica si está vacía. Si usas Vault, debería aparecer como 'VAULT encrypted')"   
+
+
 - name: connect to esx, replace machine ssl and restart
   block:
     - name: replace machine ssl and restart
