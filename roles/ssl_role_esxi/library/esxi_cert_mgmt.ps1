@@ -207,7 +207,7 @@ try {
 
             $credentials =  [PSCredential]::New($esxi_user,$securePassword)
 
-            $esxConnection = Connect-VIServer -Server $esxi_host -Credential $credentials -ErrorAction Stop -Confirm:$false
+            $esxConnection = Connect-VIServer -Server $esxi_host -Credential $credentials -ErrorAction Stop -Confirm:$false -Force
 
             # 2. Leer el nuevo certificado desde el archivo .pem
             Write-Host "Reading certificate from: $esxi_cert_path"
