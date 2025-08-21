@@ -109,6 +109,7 @@ try {
 
     elseif ($esxi_action -eq "remove") {
         try {
+
             Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false | Out-Null
             $vcConn = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop
             
@@ -196,12 +197,11 @@ try {
             if (-not $esxi_cert_path -or -not (Test-Path $esxi_cert_path)) { throw "Cert no existe: $esxi_cert_path" }
 
             Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false | Out-Null
+
+            Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop
             
             # 1. Conectar directamente al host ESXi
             Write-Host "Connecting directly to ESXi host: $esxi_host"
-
-            Write-Host "Usuario: $esxi_user "
-            Write-Host "Contrasena: $esxi_password"
 
             $securePassword = ConvertTo-SecureString $esxi_password -AsPlainText -Force
 
@@ -223,7 +223,7 @@ try {
             # 5. Reiniciar el host para que el cambio de certificado tenga efecto (mandatorio)
             Write-Host "Restarting host $esxi_host to apply certificate changes..."
             Restart-VMHost -VMHost $targetEsxHost -Confirm:$false | Out-Null
-            
+
             $module.msg = "New certificate has been set on $esxi_host. A host reboot has been initiated."
             $module.changed = $true
             $module.status = "Success"
@@ -304,7 +304,7 @@ try {
         Exit-Json $module
     }
 
-} 
+}
 catch {
     update-error "Unexpected error in esxi_cert_mgmt"
     Exit-Json $module
