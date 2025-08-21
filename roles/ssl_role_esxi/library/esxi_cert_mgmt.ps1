@@ -195,8 +195,7 @@ try {
             if (-not $esxi_password -or $esxi_password -eq "")     { throw "esxi_password vacío" }
             if (-not $esxi_cert_path -or -not (Test-Path $esxi_cert_path)) { throw "Cert no existe: $esxi_cert_path" }
 
-            Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false
-            
+            Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false | Out-Null
             
             # 1. Conectar directamente al host ESXi
             Write-Host "Connecting directly to ESXi host: $esxi_host"
@@ -223,7 +222,7 @@ try {
             
             # 5. Reiniciar el host para que el cambio de certificado tenga efecto (mandatorio)
             Write-Host "Restarting host $esxi_host to apply certificate changes..."
-            Restart-VMHost -VMHost $targetEsxHost -Confirm:$false 
+            Restart-VMHost -VMHost $targetEsxHost -Confirm:$false | Out-Null
             
             $module.msg = "New certificate has been set on $esxi_host. A host reboot has been initiated."
             $module.changed = $true
