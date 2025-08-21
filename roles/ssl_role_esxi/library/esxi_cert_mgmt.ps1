@@ -231,9 +231,7 @@ function update-error([string] $description) {
         } catch {
             update-error "Failed to replace certificate on ESXi host $esxi_host"
             # Intentar desconectar si la conexión aún existe
-            if (Get-VIServer -Server $esxi_host -ErrorAction SilentlyContinue) {
-                Disconnect-VIServer -Server $esxi_host -Confirm:$false
-            }
+            
             Exit-Json $module
         }
     }
