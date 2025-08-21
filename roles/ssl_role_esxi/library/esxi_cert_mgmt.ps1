@@ -221,38 +221,7 @@ try {
             $module.msg     = "New certificate has been set on $esxi_host. A host reboot has been initiated."
             $module.changed = $true
             $module.status  = "Success"
-            if ($esxConnection) { Disconnect-VIServer -Server $esxConnection -Confirm:$false | Out-Null } 
-            
-            Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false
-            # 1. Conectar directamente al host ESXi
-            Write-Host "Connecting directly to ESXi host: $esxi_host"
-
-            Write-Host "Usuario: $esxi_user "
-            Write-Host "Contrasena: $esxi_password"
-
-
-            $esxConnection = Connect-VIServer -Server 'esx001.local.com' -User 'root' -Password '!Passw0rd' -ErrorAction Stop -Confirm:$false
-
-            # 2. Leer el nuevo certificado desde el archivo .pem
-            Write-Host "Reading certificate from: $esxi_cert_path"
-            $esxCertificatePem = Get-Content $esxi_cert_path -Raw -Path
-            
-            # 3. Obtener el objeto del host para el comando
-            $targetEsxHost = Get-VMHost -Name $esxi_host -Server $esxConnection
-            
-            # 4. Establecer el nuevo certificado de máquina en el host
-            Write-Host "Setting new machine certificate on $esxi_host..."
-            Set-VIMachineCertificate -PemCertificate $esxCertificatePem -VMHost $targetEsxHost -Confirm:$false | Out-Null
-            
-            # 5. Reiniciar el host para que el cambio de certificado tenga efecto (mandatorio)
-            Write-Host "Restarting host $esxi_host to apply certificate changes..."
-            Restart-VMHost -VMHost $targetEsxHost -Confirm:$false 
-            
-            $module.msg = "New certificate has been set on $esxi_host. A host reboot has been initiated."
-            $module.changed = $true
-            $module.status = "Success"
-
-            Disconnect-VIServer $esxConnection -Confirm:$false
+            if ($esxConnection) { Disconnect-VIServer -Server $esxConnection -Confirm:$false | Out-Null }
                         
         } catch {
             update-error "Failed to replace certificate on ESXi host $esxi_host"
