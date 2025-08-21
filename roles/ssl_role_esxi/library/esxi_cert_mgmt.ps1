@@ -33,8 +33,6 @@ function update-error([string] $description) {
     $module.failed = $true
 }
 
-try {
-
     # --- Set vCenter in modo custom ---
     if ($esxi_action -eq "custom_mode") {
         try {
@@ -304,20 +302,7 @@ try {
         Exit-Json $module
     }
 
-}
-catch {
-    update-error "Unexpected error in esxi_cert_mgmt"
-    Exit-Json $module
-}
 
-finally {
-    if ($VIServer) {
-        try {
-            Disconnect-VIServer -Server $vcConn -Confirm:$false -ErrorAction SilentlyContinue
-            $module.msg += "Disconnected from vCenter."
-        } catch { }
-    }
-}
 
 # --- Default message ---
 if (-not $module.msg -or $module.msg.Trim() -eq "") {
