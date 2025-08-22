@@ -120,29 +120,29 @@
     # - name: End all tasks for this host
     #   ansible.builtin.meta: end_host
 
-- name: connect to esx, replace machine ssl and restart
-  block:
-    - name: replace machine ssl and restart
-      esxi_cert_mgmt:
-        esxi_action: "replace_cert"
-        vcenter_server: "{{ vcenter_server }}"
-        vcenter_user: "{{ vcenter_user }}"
-        vcenter_password: "{{ vcenter_password }}"
-        esxi_cert_path: "{{ esxi_cert_path }}"
-        esxi_host: "{{ esxi_host }}"
-        esxi_user: "{{ esxi_user }}"
-        esxi_password: "{{ esxi_password }}"
-      register: replace_mssl_out
+# - name: connect to esx, replace machine ssl and restart
+#   block:
+#     - name: replace machine ssl and restart
+#       esxi_cert_mgmt:
+#         esxi_action: "replace_cert"
+#         vcenter_server: "{{ vcenter_server }}"
+#         vcenter_user: "{{ vcenter_user }}"
+#         vcenter_password: "{{ vcenter_password }}"
+#         esxi_cert_path: "{{ esxi_cert_path }}"
+#         esxi_host: "{{ esxi_host }}"
+#         esxi_user: "{{ esxi_user }}"
+#         esxi_password: "{{ esxi_password }}"
+#       register: replace_mssl_out
 
-  rescue:
+#   rescue:
 
-    - name: Show error messsage
-      ansible.builtin.debug:
-        msg: "Error while replacing certificate"
+#     - name: Show error messsage
+#       ansible.builtin.debug:
+#         msg: "Error while replacing certificate"
 
-    - name: fail
-      ansible.builtin.fail:
-        msg: "Failed to replace certificate"
+#     - name: fail
+#       ansible.builtin.fail:
+#         msg: "Failed to replace certificate"
 
     # - name: Set error message
     #   ansible.builtin.set_fact:
@@ -171,37 +171,28 @@
 
   # --- Step 3, re-add ESXi server to the vcenter
 
-# - name: Wait for the ESXi host to complete reboot and become available (change)
+# - name: Wait for ESXi API (HTTPS 443) to be up after reboot
 #   block:
-#     - name: Wait for ESXi host to come online
-#       ansible.builtin.wait_for_connection:
-#         delay: 20       # Segundos a esperar antes de empezar a verificar
-#         sleep: 10       # Segundos a esperar entre cada intento
-#         timeout: 240    # Tiempo máximo de espera en segundos (4 minutos)
+#     - name: Wait for ESXi API to be reachable
+#       ansible.builtin.wait_for:
+#         host: "{{ esxi_host }}"
+#         port: 443
+#         state: started
+#         delay: 20
+#         sleep: 10
+#         timeout: 240
 #       delegate_to: localhost
-
-- name: Wait for ESXi API (HTTPS 443) to be up after reboot
-  block:
-    - name: Wait for ESXi API to be reachable
-      ansible.builtin.wait_for:
-        host: "{{ esxi_host }}"
-        port: 443
-        state: started
-        delay: 20
-        sleep: 10
-        timeout: 240
-      delegate_to: localhost
-      become: false
+#       become: false
 
 
-  rescue:
-    - name: Show error messsage
-      ansible.builtin.debug:
-        msg: "Error waiting for ESXi host to come online"
+#   rescue:
+#     - name: Show error messsage
+#       ansible.builtin.debug:
+#         msg: "Error waiting for ESXi host to come online"
 
-    - name: fail
-      ansible.builtin.fail:
-        msg: "Failed to wait for ESXi host to come online"
+#     - name: fail
+#       ansible.builtin.fail:
+#         msg: "Failed to wait for ESXi host to come online"
 
     # - name: Set error message
     #   ansible.builtin.set_fact:
