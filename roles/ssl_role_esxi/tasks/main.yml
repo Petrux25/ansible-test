@@ -120,14 +120,6 @@
     # - name: End all tasks for this host
     #   ansible.builtin.meta: end_host
 
-- name: "DEBUG: Verificar credenciales de ESXi ANTES de reemplazar el certificado"
-  ansible.builtin.debug:
-    msg:
-      - "Host a conectar: '{{ esxi_host }}'"
-      - "Usuario a usar: '{{ esxi_user }}'"
-      - "Contraseña a usar: '{{ esxi_password }}' (Verifica si está vacía. Si usas Vault, debería aparecer como 'VAULT encrypted')"   
-
-
 - name: connect to esx, replace machine ssl and restart
   block:
     - name: replace machine ssl and restart
@@ -179,14 +171,26 @@
 
   # --- Step 3, re-add ESXi server to the vcenter
 
-- name: Wait for the ESXi host to complete reboot and become available
-  block:
-    - name: Wait for ESXi host to come online
-      ansible.builtin.wait_for_connection:
-        delay: 30       # Segundos a esperar antes de empezar a verificar
-        sleep: 10       # Segundos a esperar entre cada intento
-        timeout: 300    # Tiempo máximo de espera en segundos (10 minutos)
-      delegate_to: localhost
+# - name: Wait for the ESXi host to complete reboot and become available (change)
+#   block:
+#     - name: Wait for ESXi host to come online
+#       ansible.builtin.wait_for_connection:
+#         delay: 20       # Segundos a esperar antes de empezar a verificar
+#         sleep: 10       # Segundos a esperar entre cada intento
+#         timeout: 240    # Tiempo máximo de espera en segundos (4 minutos)
+#       delegate_to: localhost
+
+- name: Wait for ESXi API (HTTPS 443) to be up after reboot
+  ansible.builtin.wait_for:
+    host: "{{ esxi_host }}"
+    port: 443
+    state: started
+    delay: 20
+    sleep: 10
+    timeout: 240
+  delegate_to: localhost
+  become: false
+
 
   rescue:
     - name: Show error messsage
