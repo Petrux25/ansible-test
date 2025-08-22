@@ -246,18 +246,24 @@ function update-error([string] $description) {
             $target_datacenter = $target_datacenter.Trim()
             $target_cluster    = $target_cluster.Trim()
 
+            #lista de vms apagadas 
+            if ($null -eq $powered_off_vms){ $powered_off_vms = @() }
+            elseif ($powered_off_vms -is [string]) { $powered_off_vms = @($powered_off_vms) }
+
 
             $vcConn = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop
-            $module.msg += "[re-add] Connected to vCenter $vcenter_server `n"
+            $module.msg += "[re-add] Connected to vCenter $vcenter_server "
+
 
             $existing = Get-VMHost -Name $esxi_host -Server $vcConn -ErrorAction SilentlyContinue
             if ($existing){
+                Set-VMHost -VMHost $existing -State Connected -ErrorAction SilentlyContinue | Out-Null
                 $module.msg += "[re-add] Host '$esxi_host' already present"
                 $module.status = "NoChange"
                 $module.changed = $false
-                Exit-Json
+                Exit-Json $module
             }
-
+            
             $dcObj = Get-Datacenter -Name $target_datacenter -Server $vcConn -ErrorAction Stop
             if ($target_cluster) {
                 $clusterObj = Get-Cluster -Server $vcConn -Location $dcObj | Where-Object { $_.Name -eq $target_cluster }
