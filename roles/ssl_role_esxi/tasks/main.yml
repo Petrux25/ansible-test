@@ -181,15 +181,17 @@
 #       delegate_to: localhost
 
 - name: Wait for ESXi API (HTTPS 443) to be up after reboot
-  ansible.builtin.wait_for:
-    host: "{{ esxi_host }}"
-    port: 443
-    state: started
-    delay: 20
-    sleep: 10
-    timeout: 240
-  delegate_to: localhost
-  become: false
+  block:
+    - name: Wait for ESXi API to be reachable
+      ansible.builtin.wait_for:
+        host: "{{ esxi_host }}"
+        port: 443
+        state: started
+        delay: 20
+        sleep: 10
+        timeout: 240
+      delegate_to: localhost
+      become: false
 
 
   rescue:
