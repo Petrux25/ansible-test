@@ -122,36 +122,27 @@ function update-error([string] $description) {
             if (-not $vmhost) {
                 throw "Host '$esxi_host' not found in vCenter"
             }
-
             if ($vmhost.State -ne "Maintenance") {
                 throw "Host '$($vmhost.Name)' is not in maintenance mode"
             }
             
-            $datacenter = ($vmhost | Get-Datacenter -Server $vcConn).Name
-            $cluster = ($vmhost | Get-Cluster -Server $vcConn -ErrorAction SilentlyContinue).Name
+            #Datacenter y cluster info
+            $dcObj = Get-Datacenter -VMHost $vmhost -Server $vcConn
+            $clusterObj = Get-Cluster -VMHost $vmhost -Server $vcConn -ErrorAction SilentlyContinue
 
-            #Después (limpia control chars y trim)
-            $datacenter = (($vmhost | Get-Datacenter -Server $vcConn).Name | ForEach-Object { $_.ToString() })
-            $cluster    = (($vmhost | Get-Cluster    -Server $vcConn -ErrorAction SilentlyContinue).Name | ForEach-Object { $_.ToString() })
-            
-            $datacenter = $datacenter -replace '[\x00-\x1F]',''
-            $cluster    = $cluster    -replace '[\x00-\x1F]',''
-            
-            $datacenter = $datacenter.Trim()
-            $cluster    = $cluster.Trim()
+            $dcName = ($dcObj | Select-Object -First 1 -ExpandProperty Name)
+            $clusterName = if ($clusterObj) { ($clusterObj | Select-Object -First 1 -ExpandProperty Name)} else { "" }
 
             if (-not $module.data) { $module.data = @{} }
 
-            $esx_location = @{
-                Datacenter = $datacenter
-                Cluster = $cluster
+            $module.data.HostLocation = @{
+                Datacenter = $dcName
+                Cluster = $clusterName
             }
-            if (-not $module.data) { $module.data = @{} }
-            $module.data.HostLocation = $esx_location
 
             Write-Host "Host location: "
-            Write-Host "Datacenter: $datacenter"
-            Write-Host "Cluster: $cluster"
+            Write-Host "Datacenter: $dcName"
+            Write-Host "Cluster: $clusterName"
 
             $vdSwitches = Get-VDSwitch -VMHost $vmhost -Server $vcConn -ErrorAction SilentlyContinue
 
