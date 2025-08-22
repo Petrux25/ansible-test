@@ -56,16 +56,24 @@ function update-error([string] $description) {
         try {
             Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false | Out-Null
             $vcConn = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop
+            
             $esxi = Get-VMHost -Name $esxi_host
             
             if (-not $esxi){ throw "Host $esxi_host not found in vCenter"
             }
 
+            if ($esxi.ConnectionState -eq "Maintenance") {
+                $module.msg += "Host $esxi_host is already in maintenance mode. Now proceeding to remove it from vCenter."
+                $module.status += "NoChange"
+                $module.changed = $false
+                Exit-Json $module
+            }
+            
             #turning off vms 
             $stoppedvms = @()
             $vmstopoweroff = Get-VM -Server $vcConn | Where-Object { $_.VMHost -eq $esxi -and $_.PowerState -eq "PoweredOn" }
 
-            if ($vmstopoweroff){ 
+            if ($vmstopoweroff) {
                 foreach ($vm in $vmstopoweroff) { 
                     Write-Host "Turning off VM: $($vm.Name)" 
                     Stop-VM -VM $vm -Confirm:$false
@@ -77,28 +85,27 @@ function update-error([string] $description) {
                     if ($poweredOnVMs.Count -gt 0) {
                         Write-Host "Waiting for VMs to be powered off..."
                         Start-Sleep -Seconds 5
-                    }
-                } while ($poweredOnVMs.Count -gt 0)
-            }
-            else{
-                Write-Host "No VMs found in host"
-            }
+                        }
+                    } while ($poweredOnVMs.Count -gt 0)
+                } else {
+                    Write-Host "No VMs powered on found in host"
+                }
+                
+                Write-Host "Starting to configure maintenance mode..."
+                Set-VMHost -VMHost $esxi -State Maintenance
 
 
-            Write-Host "Starting to configure maintenance mode..."
-            Set-VMHost -VMHost $esxi -State Maintenance
-
-
-            $module.msg += "ESXi host $esxi_host set to maintenance mode. "
-
-            $module.data = @{
-                PoweredOffVMs = $stoppedvms
-            }
-            Write-Host "The following VMs were turned off: $($stoppedvms -join ', ')"
-            
-            $module.changed = $true
-            $module.status = "Success"
+                $module.msg += "ESXi host $esxi_host set to maintenance mode. "
+                $module.data = @{
+                    PoweredOffVMs = $stoppedvms
+                }
+                $module.changed = $true
+                $module.status = "Success"
+                Write-Host "The following VMs were turned off: $($stoppedvms -join ', ')"
+                
         }
+
+
         catch {
             update-error "Failed to put ESXi host into maintenance mode"
             Exit-Json $module
