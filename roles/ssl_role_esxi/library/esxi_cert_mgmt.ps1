@@ -239,17 +239,13 @@ function update-error([string] $description) {
             #log de entrada 
             $module.msg += "[re-add] Inputs -> Host: $esxi_host, DC: $target_datacenter, cluster: $target_cluster."
             if (-not $target_datacenter) {throw "No location found for ESXi host in module data"}
+            
             $target_datacenter = ($target_datacenter | ForEach-Object { $_.ToString() })
             $target_cluster    = ($target_cluster    | ForEach-Object { $_.ToString() })
             $target_datacenter = $target_datacenter -replace '[\x00-\x1F]',''
             $target_cluster    = $target_cluster    -replace '[\x00-\x1F]',''
             $target_datacenter = $target_datacenter.Trim()
             $target_cluster    = $target_cluster.Trim()
-
-            #lista de vms apagadas 
-            if ($null -eq $powered_off_vms){ $powered_off_vms = @() }
-            elseif ($powered_off_vms -is [string]) { $powered_off_vms = @($powered_off_vms) }
-
 
             $vcConn = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop
             $module.msg += "[re-add] Connected to vCenter $vcenter_server "
@@ -267,7 +263,7 @@ function update-error([string] $description) {
             $dcObj = Get-Datacenter -Name $target_datacenter -Server $vcConn -ErrorAction Stop
             if ($target_cluster) {
                 $clusterObj = Get-Cluster -Server $vcConn -Location $dcObj | Where-Object { $_.Name -eq $target_cluster }
-                if (-not $clusterObj) { throw "Cluster '$target_cluster' not found in Datacenter '$target_datacenter'." }
+                if (-not $clusterObj) { Write-Host "Cluster '$target_cluster' not found in Datacenter '$target_datacenter'." }
                 $locationObj = $clusterObj
                 $module.msg += "[re-add] Target location: DC='$target_datacenter', Cluster='$target_cluster'`n"
             } else {
@@ -296,6 +292,40 @@ function update-error([string] $description) {
             $module.failed = $true
             $module.status = "Error"
             $module.msg   += "[re-add] Failed: $($_.Exception.Message)`n"
+            Exit-Json $module
+        }
+    }
+
+    elseif ($esxi_action -eq "turn_on_vms") {
+        try {
+            if ($vms_to_power_on.Count -eq 0) {
+                Write-Host "No VMs to power on."
+            }
+            $vcConn = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop
+            $module.msg = "Attempting to power on VMs: $($vms_to_power_on -join ', ')"
+            $poweredOnCount= 0
+            
+            foreach ($vmName in $vms_to_power_on){
+                $vm = Get-VM -Name $vmName.Trim() -Server $vcConn -ErrorAction SilentlyContinue
+                if ($vm) {
+                    if ($vm.PowerState -eq 'PoweredOff') {
+                        Start-VM -VM $vm -Confirm:$false | Out-Null
+                        $module.msg += "VM '$vmName' powered on. "
+                        $poweredOnCount++
+                    } else {
+                        $module.msg += "VM '$vmName' is already powered on. "
+                    }
+                } else { 
+                    $module.msg += "VM '$vmName' not found in vCenter. "  
+                }
+            }
+            if ($poweredOnCount -gt 0) {
+                $module.changed = $true
+            }
+            $module.status = "Success"
+        }
+        catch {
+            update-error "Failed to power on VMs"
             Exit-Json $module
         }
     }

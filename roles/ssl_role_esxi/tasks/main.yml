@@ -266,3 +266,52 @@
 
     # - name: End all tasks for this host
     #   ansible.builtin.meta: end_host
+
+- name: Power on VMs
+  block:
+    - name: Power on VMs
+      esxi_cert_mgmt:
+        esxi_action: "turn_on_vms"
+        vcenter_server: "{{ vcenter_server }}"
+        vcenter_user: "{{ vcenter_user }}"
+        vcenter_password: "{{ vcenter_password }}"
+        esxi_host: "{{ esxi_host }}"
+        esxi_user: "{{ esxi_user }}"
+        esxi_password: "{{ esxi_password }}"
+        target_datacenter: "{{ target_datacenter }}"
+        target_cluster: "{{ target_cluster }}"
+      register: esxi_add_out
+
+  rescue:
+
+    - name: Show error messsage
+      ansible.builtin.debug:
+        msg: "Error while trying to power on vms"
+
+    - name: fail
+      ansible.builtin.fail:
+        msg: "Failed to power on vms"
+
+    # - name: Set error message
+    #   ansible.builtin.set_fact:
+    #     assert_msg: >
+    #       An error has occurred.
+    #       {% if "re-add" in ansible_failed_result.msg | d('') %}Failed to re-add the ESXi to the vCenter{% endif %}
+
+    # - name: RC in case of failure
+    #   ansible.builtin.include_role:
+    #     name: ansible_role_returncode
+    #   vars:
+    #     rc_support: account
+    #     rc_group: framework_playbook
+    #     rc_number: 2200
+    #     rc_message: "{{ assert_msg }}"
+
+    # - name: Set exit flag
+    #   ansible.builtin.set_fact:
+    #     validate_rc_error: true
+    #   delegate_facts: true
+    #   delegate_to: localhost
+
+    # - name: End all tasks for this host
+    #   ansible.builtin.meta: end_host
