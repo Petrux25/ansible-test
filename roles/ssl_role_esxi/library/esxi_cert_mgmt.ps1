@@ -25,6 +25,7 @@ $vcenter_user     = Get-AnsibleParam -obj $params -name "vcenter_user" -type "st
 $vcenter_password = Get-AnsibleParam -obj $params -name "vcenter_password" -type "str" -secret $true -failifempty $false
 $target_datacenter = Get-AnsibleParam -obj $params -name "target_datacenter" -type "str" -failifempty $false
 $target_cluster = Get-AnsibleParam -obj $params -name "target_cluster" -type "str" -failifempty $false
+$vms_to_power_on = Get-AnsibleParam -obj $params -name "vms_to_power_on" -type "list" -default @()
 
 
 function update-error([string] $description) {
