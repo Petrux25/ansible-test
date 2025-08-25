@@ -351,8 +351,8 @@ if (-not $module.msg -or $module.msg.Trim() -eq "") {
 # --- standard output ---
 if ($module.failed) {
     $module.msg = "ESXi Certificate Management FAILED. " + $module.msg
-} else ($module.changed) {
-    $module.msg = "ESXi Certificate Management SUCCEEDED with changes. " + $module.msg
-} 
+} else {
+    $module.msg = "ESXi Certificate Management SUCCEEDED. " + $module.msg
+}
 
 Exit-Json $module
