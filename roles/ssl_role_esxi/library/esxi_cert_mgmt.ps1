@@ -238,6 +238,8 @@ function update-error([string] $description) {
 
     # --- Replace ESXi certificate ---
     elseif ($esxi_action -eq "replace_cert") {
+        $cert_replaced = $false
+
         try {
 
             if (-not $esxi_host -or $esxi_host.Trim() -eq "")      { throw "esxi_host vacío" }
@@ -268,7 +270,8 @@ function update-error([string] $description) {
             # 4. Establecer el nuevo certificado de máquina en el host
             Write-Host "Setting new machine certificate on $esxi_host..."
             Set-VIMachineCertificate -PemCertificate $esxCertificatePem -VMHost $targetEsxHost -Confirm:$false | Out-Null
-            
+            $cert_replaced = $true
+
             # 5. Reiniciar el host para que el cambio de certificado tenga efecto (mandatorio)
             Write-Host "Restarting host $esxi_host to apply certificate changes..."
             Restart-VMHost -VMHost $targetEsxHost -Confirm:$false | Out-Null
@@ -281,6 +284,40 @@ function update-error([string] $description) {
                         
         } catch {
             update-error "Failed to replace certificate on ESXi host $esxi_host"
+            if (-not $cert_replaced) {
+                $module.msg += "Critical: Certificate was not replaced. Rollback attempt started."
+                # Intentar revertir los cambios realizados
+                try {
+                    Write-Host "Attempting to rollback changes on $esxi_host..."
+                    Write-Host "Reconnecting to vCenter $vcenter_server..."
+                    $vcConnRB = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop
+
+                    Write-Host "Rollback: Attempting to re-add host..."
+                    if ($existingHost) {
+                        $module.msg += "Host '$esxi_host' already present in vCenter, skipping re-add"
+                        $vmhostRB = $existingHost
+                    } else {
+                        if (-not $target_datacenter) {throw "No location found for ESXi host in module data"}
+                        $dcObj = Get-Datacenter -Name $target_datacenter -Server $vcConnRB -ErrorAction Stop
+                        $locationObj = $dcObj
+                        if ($target_cluster){
+                            $clusterObj = Get-Cluster -Name $target_cluster -Server $vcConnRB -Location $dcObj -ErrorAction Stop
+                        }
+                        if ($clusterObj) { $locationObj = $clusterObj }
+                    }
+                    
+                    $vmhostRB = Add-VMHost -Name $esxi_host -Location $locationObj -Server $vcConnRB -ErrorAction Stop 
+                    $module.msg += "Host $($esxi_host) was successfully re-added to vCenter. "
+
+
+                    $module.msg += "Rollback successful."
+                } catch {
+                    $module.msg += "Rollback failed: $($_.Exception.Message)"
+                }
+            } elseif ($cert_replaced) {
+                $module.msg += "Critical: Certificate was replaced but error occurred after that. Host has been restarted. Manual verification required."
+            }
+            
             # Intentar desconectar si la conexión aún existe
             
             Exit-Json $module
@@ -288,6 +325,7 @@ function update-error([string] $description) {
     }
 
     elseif ($esxi_action -eq "re-add") {
+
         try {
             #log de entrada 
             $module.msg += "[re-add] Inputs -> Host: $esxi_host, DC: $target_datacenter, cluster: $target_cluster."
