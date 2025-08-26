@@ -10,7 +10,6 @@ $module = New-Object psobject @{
     data    = ""
 }
 
-
 $ErrorActionPreference = "Stop"
 
 # --- Read and parse incoming parameters ---
@@ -26,6 +25,8 @@ $vcenter_password = Get-AnsibleParam -obj $params -name "vcenter_password" -type
 $target_datacenter = Get-AnsibleParam -obj $params -name "target_datacenter" -type "str" -failifempty $false
 $target_cluster = Get-AnsibleParam -obj $params -name "target_cluster" -type "str" -failifempty $false
 $vms_to_power_on = Get-AnsibleParam -obj $params -name "vms_to_power_on" -type "list" -default @()
+
+
 
 
 function update-error([string] $description) {
@@ -54,12 +55,13 @@ function update-error([string] $description) {
 
     # --- ESX in maintenance mode ---
     elseif ($esxi_action -eq "maintenance") {
+        $EnteredMaintenance = $false
+        $stoppedvms = @()
         try {
             Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false | Out-Null
             $vcConn = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop
             
             $esxi = Get-VMHost -Name $esxi_host
-            
             if (-not $esxi){ throw "Host $esxi_host not found in vCenter"
             }
 
@@ -70,8 +72,7 @@ function update-error([string] $description) {
                 Exit-Json $module
             }
             
-            #turning off vms 
-            $stoppedvms = @()
+            #turning off vms
             $vmstopoweroff = Get-VM -Server $vcConn | Where-Object { $_.VMHost -eq $esxi -and $_.PowerState -eq "PoweredOn" }
 
             if ($vmstopoweroff) {
@@ -94,6 +95,7 @@ function update-error([string] $description) {
                 
                 Write-Host "Starting to configure maintenance mode..."
                 Set-VMHost -VMHost $esxi -State Maintenance
+                $EnteredMaintenance = $true
 
 
                 $module.msg += "ESXi host $esxi_host set to maintenance mode. "
@@ -105,15 +107,40 @@ function update-error([string] $description) {
                 Write-Host "The following VMs were turned off: $($stoppedvms -join ', ')"
                 
         }
-
-
         catch {
             update-error "Failed to put ESXi host into maintenance mode"
-            Exit-Json $module
+            $module.msg += "Rollback attempt: "
+            try {
+                if ($vcConn) {
+                    $vmhost = Get-VMHost -Name $esxi_host -Server $vcConn -ErrorAction SilentlyContinue
+                    if ($vmhost -and $EnteredMaintenance) {
+                        Write-Host "Exiting maintenance mode on $esxi_host"
+                        Set-VMHost -VMHost $vmhost -State Connected -Confirm:$false | Out-Null
+                        $module.msg += "Exited maintenance mode on $esxi_host. "
+                    }
+                
+                    if ($stoppedvms.Count -gt 0) {
+                        foreach ($vmName in $stoppedvms) {
+                            $vmToStart = Get-VM -Name $vmName -Server $vcConn -ErrorAction SilentlyContinue
+                            if ($vmToStart) {
+                                Start-VM -VM $vmToStart -Confirm:$false
+                            }
+                        }
+                        $module.msg += "Attempted to start power on VMs "
+                    }
+                }
+            $module.msg += "Rollback finished"
+            }catch {
+                $module.msg += "Rollback failed: $($_.Exception.Message)"
+            }
+
+            Exit-Json $module     
         }
     }
 
     elseif ($esxi_action -eq "remove") {
+        $hostRemoved = $false
+
         try {
 
             Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false | Out-Null
@@ -172,6 +199,7 @@ function update-error([string] $description) {
             
             Write-Host "Removing $esxi_host from vCenter"
             Remove-VMHost $vmhost -Confirm:$false
+            $hostRemoved = $true
             Write-Host "ESXi has been removed successfully"
 
             $module.msg += "ESXi $esxi_host has been removed from vCenter."
@@ -180,6 +208,30 @@ function update-error([string] $description) {
         }
         catch {
             update-error "Failed to remove $esxi_host from vCenter"
+            if (-not $hostRemoved) {
+                $module.msg += "Rollback attempt: "
+                try {
+                    if ($vcConn) {
+                        $vmhost = Get-VMHost -Name $esxi_host -Server $vcConn -ErrorAction SilentlyContinue
+                        if ($vmhost -and $vmhost.State -eq "Maintenance") {
+                            Set-VMHost -VMHost $vmhost -State Connected -Confirm:$false | Out-Null
+                            $module.msg += "Host '$esxi_host' has taken out of maintenance mode."
+                        }
+                        if ($vms_to_power_on.Count -gt 0) {
+                            foreach ($vmName in $vms_to_power_on) {
+                                $vmToStart = Get-VM -Name $vmName -Server $vcConn -ErrorAction SilentlyContinue
+                                if ($vmToStart) {Start-VM -VM $vmToStart -Confirm:$false | Out-Null }
+                            }
+                            $module.msg += "Attempted to power on VMs"
+                        }
+                    }
+                    $module.msg += "Rollback finished."
+                } catch {
+                    $module.msg += "Error during rollback: $($_.Exception.Message)"
+                }
+            } else {
+                $module.msg += "Critical: Host already removed. Manual intervention required."
+            }
             Exit-Json $module
         }
     }

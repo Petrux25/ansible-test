@@ -70,6 +70,12 @@
       ansible.builtin.debug:
         var: maintenance_out.data
 
+    - name: Declare cleaned location variable
+      ansible.builtin.set_fact:
+        target_datacenter: "{{ remove_out.data.HostLocation.Datacenter | regex_replace('\\r|\\n|\\t','') | trim }}"
+        target_cluster: "{{ remove_out.data.HostLocation.Cluster | default('') | regex_replace('\\r|\\n|\\t','') | trim }}"
+        vms_to_power_on: "{{ maintenance_out.data.PoweredOffVMs }}"
+
     - name: Remove the ESXi host from vCenter
       esxi_cert_mgmt:
         esxi_action: "remove"
@@ -77,15 +83,8 @@
         vcenter_server: "{{ vcenter_server }}"
         vcenter_user: "{{ vcenter_user }}"
         vcenter_password: "{{ vcenter_password }}"
+        vms_to_power_on: "{{ vms_to_power_on }}"
       register: remove_out
-
-
-    - name: Declare cleaned location variable
-      ansible.builtin.set_fact:
-        target_datacenter: "{{ remove_out.data.HostLocation.Datacenter | regex_replace('\\r|\\n|\\t','') | trim }}"
-        target_cluster: "{{ remove_out.data.HostLocation.Cluster | default('') | regex_replace('\\r|\\n|\\t','') | trim }}"
-        vms_to_power_on: "{{ maintenance_out.data.PoweredOffVMs }}"
-
 
   rescue:
     - name: Show error messsage
