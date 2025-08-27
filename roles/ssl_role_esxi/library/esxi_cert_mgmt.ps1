@@ -41,6 +41,7 @@ function update-error([string] $description) {
             Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false | Out-Null
             $vcConn = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop
             $module.msg += "Connected to vCenter. "
+            
             $certModeSetting = Get-AdvancedSetting -Name "vpxd.certmgmt.mode" -Entity $vcConn -Server $vcConn
             Set-AdvancedSetting -AdvancedSetting $certModeSetting -Value "custom" -Confirm:$false
             $module.msg += "Set vpxd.certmgmt.mode to 'custom'. "
@@ -285,14 +286,17 @@ function update-error([string] $description) {
         } catch {
             update-error "Failed to replace certificate on ESXi host $esxi_host"
             if (-not $cert_replaced) {
-                $module.msg += "Critical: Certificate was not replaced. Rollback attempt started."
+                $module.msg += "Certificate was not replaced. Rollback attempt started."
                 # Intentar revertir los cambios realizados
                 try {
                     Write-Host "Attempting to rollback changes on $esxi_host..."
                     Write-Host "Reconnecting to vCenter $vcenter_server..."
                     $vcConnRB = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop
 
+                    #Re-adding host
+
                     Write-Host "Rollback: Attempting to re-add host..."
+                    $existingHost = Get-VMHost -Name $esxi_host -Server $vcConnRB -ErrorAction SilentlyContinue
                     if ($existingHost) {
                         $module.msg += "Host '$esxi_host' already present in vCenter, skipping re-add"
                         $vmhostRB = $existingHost
@@ -302,24 +306,39 @@ function update-error([string] $description) {
                         $locationObj = $dcObj
                         if ($target_cluster){
                             $clusterObj = Get-Cluster -Name $target_cluster -Server $vcConnRB -Location $dcObj -ErrorAction Stop
+                            if ($clusterObj) { $locationObj = $clusterObj }
                         }
-                        if ($clusterObj) { $locationObj = $clusterObj }
+                        $vmhostRB = Add-VMHost -Name $esxi_host -Location $locationObj -User $esxi_user -Password $esxi_password -Force -ErrorAction Stop -Confirm:$false
+                        Write-Host "Host $esxi_host re-added to vCenter."
                     }
-                    
-                    $vmhostRB = Add-VMHost -Name $esxi_host -Location $locationObj -Server $vcConnRB -ErrorAction Stop 
-                    $module.msg += "Host $($esxi_host) was successfully re-added to vCenter. "
+                    # Maintenance mode off
+                    Write-Host "Rollback: Taking host out of maintenance mode"
+                    Set-VMHost -VMHost $vmhostRB -State Connected -ErrorAction Stop -Confirm:$false | Out-Null
+                    $module.msg += "Host $($esxi_host) is no longer in maintenance mode."
 
+                    #Turning on VMs
 
-                    $module.msg += "Rollback successful."
+                    Write-Host "Rollback: Attempting to power on VMs"
+                    if ($vms_to_power_on -and $vms_to_power_on.Count -gt 0) {
+                        foreach ($vmName in $vms_to_power_on) {
+                            $vmToStart = Get-VM -Name $vmName.Trim() -Server $vcConnRB -ErrorAction SilentlyContinue
+                            if ($vmToStart -and $vmToStart.PowerState -eq 'PoweredOff'){
+                                Start-VM -VM $vmToStart -Confirm:$false | Out-Null
+                            }
+                        }
+                        $module.msg += "Attempted to power on specified VMs."
+                    } else {
+                        $module.msg += "No VMs to power on."
+                    }
+                    Disconnect-VIServer -Server $vcConnRB -Confirm:$false
+                    $module.msg += "Rollback completed."
+
                 } catch {
-                    $module.msg += "Rollback failed: $($_.Exception.Message)"
+                    $module.msg += "Critical: Rollback failed: $($_.Exception.Message)"
                 }
             } elseif ($cert_replaced) {
                 $module.msg += "Critical: Certificate was replaced but error occurred after that. Host has been restarted. Manual verification required."
-            }
-            
-            # Intentar desconectar si la conexión aún existe
-            
+            }       
             Exit-Json $module
         }
     }
