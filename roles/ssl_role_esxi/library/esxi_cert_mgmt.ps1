@@ -38,7 +38,7 @@ function Set-VCenterCertMode {
         [Parameter(Mandatory=$true)][psobject]$module,
         [Parameter(Mandatory=$true)][string]$vcenter_server,
         [Parameter(Mandatory=$true)][string]$vcenter_user,
-        [Parameter(Mandatory=$true)][securestring]$vcenter_password
+        [Parameter(Mandatory=$true)][string]$vcenter_password
     )
     try{
         $vcConn = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop
@@ -66,7 +66,7 @@ function Enter-MaintenanceMode {
         [Parameter(Mandatory=$true)][string]$esxi_host,
         [Parameter(Mandatory=$true)][string]$vcenter_server,
         [Parameter(Mandatory=$true)][string]$vcenter_user,
-        [Parameter(Mandatory=$true)][securestring]$vcenter_password
+        [Parameter(Mandatory=$true)][string]$vcenter_password
     )
    
     $EnteredMaintenance = $false
@@ -161,7 +161,7 @@ function Remove-VMFromVCenter {
         [Parameter(Mandatory=$true)][psobject]$module,
         [Parameter(Mandatory=$true)][string]$vcenter_server,
         [Parameter(Mandatory=$true)][string]$vcenter_user,
-        [Parameter(Mandatory=$true)][securestring]$vcenter_password,
+        [Parameter(Mandatory=$true)][string]$vcenter_password,
         [Parameter(Mandatory=$true)][string]$esxi_host,
         [Parameter(Mandatory=$true)][array]$vms_to_power_on
         
@@ -275,10 +275,10 @@ function Update-Cert{
         [Parameter(Mandatory=$true)][psobject]$module,
         [Parameter(Mandatory=$true)][string]$vcenter_server,
         [Parameter(Mandatory=$true)][string]$vcenter_user,
-        [Parameter(Mandatory=$true)][securestring]$vcenter_password,
+        [Parameter(Mandatory=$true)][string]$vcenter_password,
         [Parameter(Mandatory=$true)][string]$esxi_host,
         [Parameter(Mandatory=$true)][string]$esxi_user,
-        [Parameter(Mandatory=$true)][securestring]$esxi_password,
+        [Parameter(Mandatory=$true)][string]$esxi_password,
         [Parameter(Mandatory=$true)][string]$esxi_cert_path,
         [Parameter(Mandatory=$true)][string]$target_datacenter,
         [Parameter(Mandatory=$true)][string]$target_cluster,
@@ -608,6 +608,14 @@ function Start-VMs{
         }
         catch {
             Exit-Json $module
+        }
+    }
+    elseif ($esxi_action -eq "re-connect") {
+        try {
+            
+        }
+        catch {
+            <#Do this if a terminating exception happens#>
         }
     }
     else {
