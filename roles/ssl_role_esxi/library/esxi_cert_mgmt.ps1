@@ -158,11 +158,116 @@ function Enter-MaintenanceMode {
 function Remove-VMFromVCenter {
 
     param (
-        [string]$vcenter_server,
-        [string]$vcenter_user,
-        [string]$vcenter_password,
-        [string]$esxi_host
+        [Parameter(Mandatory=$true)][psobject]$module,
+        [Parameter(Mandatory=$true)][string]$vcenter_server,
+        [Parameter(Mandatory=$true)][string]$vcenter_user,
+        [Parameter(Mandatory=$true)][securestring]$vcenter_password,
+        [Parameter(Mandatory=$true)][string]$esxi_host,
+        [Parameter(Mandatory=$true)][array]$vms_to_power_on
+        
     )
+
+    try {
+
+        Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false | Out-Null
+        $vcConn = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop
+            
+        $vmhost = Get-VMHost -Name $esxi_host -Server $vcConn
+        if (-not $vmhost) {
+            throw "Host '$esxi_host' not found in vCenter"
+        }
+        if ($vmhost.State -ne "Maintenance") {
+            throw "Host '$($vmhost.Name)' is not in maintenance mode"
+        }
+            
+        #Datacenter y cluster info
+        $dcObj = Get-Datacenter -VMHost $vmhost -Server $vcConn
+        $clusterObj = Get-Cluster -VMHost $vmhost -Server $vcConn -ErrorAction SilentlyContinue
+
+        $dcName = ($dcObj | Select-Object -First 1 -ExpandProperty Name)
+        $clusterName = if ($clusterObj) { ($clusterObj | Select-Object -First 1 -ExpandProperty Name)} else { "" }
+
+        if (-not $module.data) { $module.data = @{} }
+
+        $module.data.HostLocation = @{
+            Datacenter = $dcName
+            Cluster = $clusterName
+        }
+
+        Write-Host "Host location: "
+        Write-Host "Datacenter: $dcName"
+        Write-Host "Cluster: $clusterName"
+
+        $vdSwitches = Get-VDSwitch -VMHost $vmhost -Server $vcConn -ErrorAction SilentlyContinue
+
+        if ($vdSwitches) {
+            Write-Host "$esxi_host is connected to the following VDS: $($vdSwitches.Name -join ',')"
+            if (-not $module.data) { $module.data = @{} }
+            $module.data.RemovedVDSwitches = $vdSwitches.Name
+
+            foreach ($vds in $vdSwitches) {
+                #find VMkernel adapters used in VDS
+                $vmkToRemove = Get-VMHostNetworkAdapter -VMHost $vmhost -DistributedSwitch $vds -VMKernel 
+
+                if ($vmkToRemove) {
+                    #To migrate VMkernel adapters to standard switch
+                    Write-Host "Removing VMkernel adaptors..."
+                    Remove-VMHostNetworkAdapter -Nic $vmkToRemove -Confirm:$false         
+                }
+                    Write-Host "Disconnecting host from VDS: $($vds.Name)"
+                    Remove-VDSwitchVMHost -VDSwitch $vds -VMHost $vmhost -Confirm:$false
+            }
+                $module.msg += "Host has been disconnected from all VDS"
+            } else {
+                Write-Host "$esxi_host is not connected to a VDS"
+            }
+            #verifying if esx connectivity 
+            
+            Write-Host "Removing $esxi_host from vCenter"
+            Remove-VMHost $vmhost -Confirm:$false
+            $hostRemoved = $true
+            Write-Host "ESXi has been removed successfully"
+
+            $module.msg += "ESXi $esxi_host has been removed from vCenter."
+            $module.changed = $true
+            $module.status = "Success"
+    }
+    catch {
+        update-error "Failed to remove $esxi_host from vCenter"
+            if (-not $hostRemoved) {
+                $module.msg += "Rollback attempt: "
+                try {
+                    if ($vcConn) {
+                        $vmhost = Get-VMHost -Name $esxi_host -Server $vcConn -ErrorAction SilentlyContinue
+                        if ($vmhost -and $vmhost.State -eq "Maintenance") {
+                            Set-VMHost -VMHost $vmhost -State Connected -Confirm:$false | Out-Null
+                            $module.msg += "Host '$esxi_host' has taken out of maintenance mode."
+                        }
+                        if ($vms_to_power_on.Count -gt 0) {
+                            foreach ($vmName in $vms_to_power_on) {
+                                $vmToStart = Get-VM -Name $vmName -Server $vcConn -ErrorAction SilentlyContinue
+                                if ($vmToStart) {Start-VM -VM $vmToStart -Confirm:$false | Out-Null }
+                            }
+                            $module.msg += "Attempted to power on VMs"
+                        }
+                    }
+                    $module.msg += "Rollback finished."
+                } catch {
+                    $module.msg += "Error during rollback: $($_.Exception.Message)"
+                }
+            } else {
+                $module.msg += "Critical: Host already removed. Manual intervention required."
+            }
+            Throw
+    }
+    finally {
+        if ($esxConnection) {
+            Disconnect-VIServer -Server $esxConnection -Confirm:$false | Out-Null
+        }
+        if ($vcConn) {
+            Disconnect-VIServer -Server $vcConn -Confirm:$false | Out-Null
+        }
+    }
 }
 
 function Update-Cert{
@@ -442,97 +547,16 @@ function Start-VMs{
         $hostRemoved = $false
 
         try {
-
-            Set-PowerCLIConfiguration -InvalidCertificateAction Ignore -Confirm:$false | Out-Null
-            $vcConn = Connect-VIServer -Server $vcenter_server -User $vcenter_user -Password $vcenter_password -ErrorAction Stop
-            
-            $vmhost = Get-VMHost -Name $esxi_host -Server $vcConn
-            if (-not $vmhost) {
-                throw "Host '$esxi_host' not found in vCenter"
-            }
-            if ($vmhost.State -ne "Maintenance") {
-                throw "Host '$($vmhost.Name)' is not in maintenance mode"
-            }
-            
-            #Datacenter y cluster info
-            $dcObj = Get-Datacenter -VMHost $vmhost -Server $vcConn
-            $clusterObj = Get-Cluster -VMHost $vmhost -Server $vcConn -ErrorAction SilentlyContinue
-
-            $dcName = ($dcObj | Select-Object -First 1 -ExpandProperty Name)
-            $clusterName = if ($clusterObj) { ($clusterObj | Select-Object -First 1 -ExpandProperty Name)} else { "" }
-
-            if (-not $module.data) { $module.data = @{} }
-
-            $module.data.HostLocation = @{
-                Datacenter = $dcName
-                Cluster = $clusterName
-            }
-
-            Write-Host "Host location: "
-            Write-Host "Datacenter: $dcName"
-            Write-Host "Cluster: $clusterName"
-
-            $vdSwitches = Get-VDSwitch -VMHost $vmhost -Server $vcConn -ErrorAction SilentlyContinue
-
-            if ($vdSwitches) {
-                Write-Host "$esxi_host is connected to the following VDS: $($vdSwitches.Name -join ',')"
-                if (-not $module.data) { $module.data = @{} }
-                $module.data.RemovedVDSwitches = $vdSwitches.Name
-
-                foreach ($vds in $vdSwitches) {
-                    #find VMkernel adapters used in VDS
-                    $vmkToRemove = Get-VMHostNetworkAdapter -VMHost $vmhost -DistributedSwitch $vds -VMKernel 
-
-                    if ($vmkToRemove) {
-                        #To migrate VMkernel adapters to standard switch
-                        Write-Host "Removing VMkernel adaptors..."
-                        Remove-VMHostNetworkAdapter -Nic $vmkToRemove -Confirm:$false         
-                    }
-                        Write-Host "Disconnecting host from VDS: $($vds.Name)"
-                        Remove-VDSwitchVMHost -VDSwitch $vds -VMHost $vmhost -Confirm:$false
-                }
-                $module.msg += "Host has been disconnected from all VDS"
-            } else {
-                Write-Host "$esxi_host is not connected to a VDS"
-            }
-            #verifying if esx connectivity 
-            
-            Write-Host "Removing $esxi_host from vCenter"
-            Remove-VMHost $vmhost -Confirm:$false
-            $hostRemoved = $true
-            Write-Host "ESXi has been removed successfully"
-
-            $module.msg += "ESXi $esxi_host has been removed from vCenter."
-            $module.changed = $true
-            $module.status = "Success"
+            Remove-VMFromVCenter -module $module 
+            -vcenter_server $vcenter_server 
+            -vcenter_user $vcenter_user 
+            -vcenter_password $vcenter_password 
+            -esxi_host $esxi_host 
+            -vms_to_power_on $vms_to_power_on 
         }
         catch {
-            update-error "Failed to remove $esxi_host from vCenter"
-            if (-not $hostRemoved) {
-                $module.msg += "Rollback attempt: "
-                try {
-                    if ($vcConn) {
-                        $vmhost = Get-VMHost -Name $esxi_host -Server $vcConn -ErrorAction SilentlyContinue
-                        if ($vmhost -and $vmhost.State -eq "Maintenance") {
-                            Set-VMHost -VMHost $vmhost -State Connected -Confirm:$false | Out-Null
-                            $module.msg += "Host '$esxi_host' has taken out of maintenance mode."
-                        }
-                        if ($vms_to_power_on.Count -gt 0) {
-                            foreach ($vmName in $vms_to_power_on) {
-                                $vmToStart = Get-VM -Name $vmName -Server $vcConn -ErrorAction SilentlyContinue
-                                if ($vmToStart) {Start-VM -VM $vmToStart -Confirm:$false | Out-Null }
-                            }
-                            $module.msg += "Attempted to power on VMs"
-                        }
-                    }
-                    $module.msg += "Rollback finished."
-                } catch {
-                    $module.msg += "Error during rollback: $($_.Exception.Message)"
-                }
-            } else {
-                $module.msg += "Critical: Host already removed. Manual intervention required."
-            }
             Exit-Json $module
+            
         }
     }
 
