@@ -231,6 +231,7 @@
         esxi_password: "{{ esxi_password }}"
         target_datacenter: "{{ target_datacenter }}"
         target_cluster: "{{ target_cluster }}"
+        vms_to_power_on: "{{ vms_to_power_on }}"
       register: esxi_add_out
 
   rescue:
