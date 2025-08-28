@@ -3,6 +3,7 @@
 ## Synopsis
 
 This Ansible role is designed to automate the replacement of SSL certificates on a VMWare ESXi host. It performs the following high-level actions via custom PowerShell module "esxi_cert_mgmt":
+
 1. Sets vCenter certificate management mode to 'custom'
 2. Places the ESXi host in 'Maintenance mode', powering off running VMs and recording their names.
 3. Detaches the ESXi host from any vDS (if present) and remove it from vCenter, while capturing its Datacenter and Cluster location. 
@@ -32,7 +33,6 @@ Variable | Default | Comments
 Note: All file paths must be absolute and accessible by the Ansible controller. Certificate files must be in CER or PEM format or (base64-encoded).
 
 
-
 ## Results from execution
 
 After the execution, the playbook will log a return code for each node to identify the result. Use this as a reference.
@@ -50,27 +50,51 @@ vcenter_cert | 2003 | General PowerCLI/PowerShell error during certificate opera
 
 ## Procedure 
 
-This automation performs the following steps to manage SSL certificates on a VMware vCenter server: 
+This automation performs the following steps to manage SSL certificates on a ESXi Host: 
 
-1. Displays input variables
-Outputs the values of the key variables (ca_cert_path, vcenter_server, vcenter_user, and machine_ssl_cert_path) for debugging and traceability.
+1. Set vCenter custom mode
+Calls esxi_cert_mgmt with esxi_action: custom_mode to set vpxd.certmgmt.mode=custom.
 
-2. Validates vCenter Connectivity:
-Attempts to connect to the specified vCenter server using the provided credentials. Fails early if unreachable or credentials are invalid.
+2. Enter Maintenance Mode & stop VMs
+Calls esxi_cert_mgmt with esxi_action: maintenance.
 
-3. Validates certificate paths.
-Verifies the existence of all required certificate files before attempting any changes.
+- Powers off any VMs running on the target host.
 
-4. Connects to vCenter and adds the CA certificate:
-Attempts to connect to the specified vCenter server using the provided credentials and installs the CA root certificate into the vCenter trusted certificate store.
+- Waits for them to stop.
 
-5. Replaces the Machine SSL certificate:
-After successfully adding the CA certificate, the playbook initiates the replacement of the Machine SSL certificate in vCenter using the provided certificate file.
+- Puts the host into Maintenance Mode.
 
-* This operation is also wrapped in error handling to report any issues encountered during the process.
+- Returns data.PoweredOffVMs.
 
-6. Handles error:
-For each major step (adding CA, replacing certificate), the playbook includes rescue/exception handling. If a task fails, it shows a debug message and fails the playbook for that host with a clear critical error message.
+3. Remove host from vCenter
+Calls esxi_cert_mgmt with esxi_action: remove.
+
+- Detaches from vDS if present.
+
+- Captures Datacenter and Cluster into data.HostLocation.
+
+- Removes the host from vCenter.
+
+4. Replace ESXi Machine SSL certificate
+Calls esxi_cert_mgmt with esxi_action: replace_cert.
+
+- Connects directly to ESXi.
+
+- Applies the PEM using Set-VIMachineCertificate.
+
+- Reboots the host.
+
+5. Re-add host to vCenter
+Calls esxi_cert_mgmt with esxi_action: re-add.
+
+- Re-adds to the original Cluster when available; otherwise, to the Datacenter Host Folder.
+
+- Ensures the host is Connected.
+
+6. Power on VMs
+Calls esxi_cert_mgmt with esxi_action: turn_on_vms to start the VMs recorded in step 2.
+
+Each major block includes a rescue path to surface a clear failure message.
 
 * Notes: 
 Sensitive Variables:
@@ -79,6 +103,18 @@ The variables vcenter_password and certificate file paths must be provided secur
 Variable Values:
 
 All paths should be absolute and use escaped backslashes if running on Windows (C:\\Users\\user\\Desktop\\cert.cer).
+
+## Rollback behavior
+
+- Maintenance: If the host is already in Maintenance Mode, the module reports NoChange. On failure, it attempts to exit Maintenance and power on any VMs it stopped.
+
+- Removal: On failure before the host is actually removed, the module attempts to exit Maintenance and power on VMs (if provided).
+
+- Replace certificate: If the error occurs before the certificate is applied, the module attempts to re-add the host (if missing), exit Maintenance, and power on VMs. On the other hand, if the certificate was applied and the host rebooted, the module flags the situation for manual verification.
+
+- Re-add: If the host already exists in vCenter, the module ensures it is Connected and returns NoChange.
+
+- Power on VMs: Starts only VMs that are currently PoweredOff; skips missing or already powered-on VMs.
 
 ## Support
 
