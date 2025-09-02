@@ -301,5 +301,3 @@
 
     - name: End all tasks for this host
       ansible.builtin.meta: end_host
-    
-
