@@ -19,43 +19,34 @@
     #   changed_when: "'Successfully started all services' in restart_services.stdout"
 
   rescue:
-
-    - name: Show error messsage
+    - name: show error message
       ansible.builtin.debug:
-        msg: "Error custom mode"
+        msg: "An error has occurred"
 
-    - name: fail
-      ansible.builtin.fail:
-        msg: "Failed to set custom mode"
+    - name: Set error message
+      ansible.builtin.set_fact:
+        assert_msg: "Failed to connect to set custom mode, {{ custom_mode_out.msg }}"
 
-    # - name: Set error message
-    #   ansible.builtin.set_fact:
-    #     assert_msg: >
-    #       An error  has occurred while setting up custom mode.
-    #       {% if "custom mode" in ansible_failed_result.msg | d('') %}Fail to set up Custom mode{% endif %}
-    #       {% if "wait for" in ansible_failed_result.task | d('') %}Timeout waiting for vCenter to come online.{% endif %}
+    - name: RC in case of failure
+      ansible.builtin.include_role:
+        name: ansible_role_returncode
+      vars:
+        rc_support: account
+        rc_group: framework_playbook
+        rc_number: 1000
+        rc_message: "{{ assert_msg }}"
 
-    # - name: RC in case of failure
-    #   ansible.builtin.include_role:
-    #     name: ansible_role_returncode
-    #   vars:
-    #     rc_support: account
-    #     rc_group: framework_playbook
-    #     rc_number: 2200
-    #     rc_message: "{{ assert_msg }}"
+    - name: Set exit flag
+      ansible.builtin.set_fact:
+        validate_rc_error: true
+      delegate_facts: true
+      delegate_to: localhost
 
-    # - name: Set exit flag
-    #   ansible.builtin.set_fact:
-    #     validate_rc_error: true
-    #   delegate_facts: true
-    #   delegate_to: localhost
-
-    # - name: End all tasks for this host
-    #   ansible.builtin.meta: end_host
-
+    - name: End all tasks for this host
+      ansible.builtin.meta: end_host
 
     # Step 2, continue with the ESXi cert replacement
-- name: set maintenance mode and remove from vCenter
+- name: set maintenance mode
   block:
     - name: set maintenance mode
       esxi_cert_mgmt:
@@ -76,6 +67,35 @@
         target_cluster: "{{ remove_out.data.HostLocation.Cluster | default('') | regex_replace('\\r|\\n|\\t','') | trim }}"
         vms_to_power_on: "{{ maintenance_out.data.PoweredOffVMs }}"
 
+  rescue:
+    - name: show error message
+      ansible.builtin.debug:
+        msg: "An error has occurred"
+
+    - name: Set error message
+      ansible.builtin.set_fact:
+        assert_msg: "Failed to connect set maintenance mode. {{ maintenance_out.msg }}"
+
+    - name: RC in case of failure
+      ansible.builtin.include_role:
+        name: ansible_role_returncode
+      vars:
+        rc_support: account
+        rc_group: framework_playbook
+        rc_number: 2000
+        rc_message: "{{ assert_msg }}"
+
+    - name: Set exit flag
+      ansible.builtin.set_fact:
+        validate_rc_error: true
+      delegate_facts: true
+      delegate_to: localhost
+
+    - name: End all tasks for this host
+      ansible.builtin.meta: end_host
+
+- name: set maintenance mode and remove from vCenter
+  block:
     - name: Remove the ESXi host from vCenter
       esxi_cert_mgmt:
         esxi_action: "remove"
@@ -87,136 +107,114 @@
       register: remove_out
 
   rescue:
-    - name: Show error messsage
+    - name: show error message
       ansible.builtin.debug:
-        msg: "Error maintenance mode"
+        msg: "An error has occurred"
 
-    - name: fail
-      ansible.builtin.fail:
-        msg: "Failed to set maintenance mode"
+    - name: Set error message
+      ansible.builtin.set_fact:
+        assert_msg: "Failed to remove host from vCenter. {{ remove_out.msg }}"
 
-    # - name: Set error message
-    #   ansible.builtin.set_fact:
-    #     assert_msg: >
-    #       An error has occurred.
-    #       {% if "maintenance" in ansible_failed_result.msg | d('') %}Failed to set up maintenance mode{% endif %}
-    #       {% if "remove" in ansible_failed_result.msg | d('') %}Failed to remove ESXi host from vCenter{% endif %}
+    - name: RC in case of failure
+      ansible.builtin.include_role:
+        name: ansible_role_returncode
+      vars:
+        rc_support: account
+        rc_group: framework_playbook
+        rc_number: 3000
+        rc_message: "{{ assert_msg }}"
 
-    # - name: RC in case of failure
-    #   ansible.builtin.include_role:
-    #     name: ansible_role_returncode
-    #   vars:
-    #     rc_support: account
-    #     rc_group: framework_playbook
-    #     rc_number: 2200
-    #     rc_message: "{{ assert_msg }}"
+    - name: Set exit flag
+      ansible.builtin.set_fact:
+        validate_rc_error: true
+      delegate_facts: true
+      delegate_to: localhost
 
-    # - name: Set exit flag
-    #   ansible.builtin.set_fact:
-    #     validate_rc_error: true
-    #   delegate_facts: true
-    #   delegate_to: localhost
+    - name: End all tasks for this host
+      ansible.builtin.meta: end_host
 
-    # - name: End all tasks for this host
-    #   ansible.builtin.meta: end_host
+- name: connect to esx, replace machine ssl and restart
+  block:
+    - name: replace machine ssl and restart
+      esxi_cert_mgmt:
+        esxi_action: "replace_cert"
+        vcenter_server: "{{ vcenter_server }}"
+        vcenter_user: "{{ vcenter_user }}"
+        vcenter_password: "{{ vcenter_password }}"
+        esxi_cert_path: "{{ esxi_cert_path }}"
+        esxi_host: "{{ esxi_host }}"
+        esxi_user: "{{ esxi_user }}"
+        esxi_password: "{{ esxi_password }}"
+      register: replace_mssl_out
 
-# - name: connect to esx, replace machine ssl and restart
-#   block:
-#     - name: replace machine ssl and restart
-#       esxi_cert_mgmt:
-#         esxi_action: "replace_cert"
-#         vcenter_server: "{{ vcenter_server }}"
-#         vcenter_user: "{{ vcenter_user }}"
-#         vcenter_password: "{{ vcenter_password }}"
-#         esxi_cert_path: "{{ esxi_cert_path }}"
-#         esxi_host: "{{ esxi_host }}"
-#         esxi_user: "{{ esxi_user }}"
-#         esxi_password: "{{ esxi_password }}"
-#       register: replace_mssl_out
+  rescue:
+    - name: show error message
+      ansible.builtin.debug:
+        msg: "An error has occurred"
 
-#   rescue:
+    - name: Set error message
+      ansible.builtin.set_fact:
+        assert_msg: "Failed to replace machine SSL certificate. {{ replace_mssl_out.msg }}"
 
-#     - name: Show error messsage
-#       ansible.builtin.debug:
-#         msg: "Error while replacing certificate"
+    - name: RC in case of failure
+      ansible.builtin.include_role:
+        name: ansible_role_returncode
+      vars:
+        rc_support: account
+        rc_group: framework_playbook
+        rc_number: 4000
+        rc_message: "{{ assert_msg }}"
 
-#     - name: fail
-#       ansible.builtin.fail:
-#         msg: "Failed to replace certificate"
+    - name: Set exit flag
+      ansible.builtin.set_fact:
+        validate_rc_error: true
+      delegate_facts: true
+      delegate_to: localhost
 
-    # - name: Set error message
-    #   ansible.builtin.set_fact:
-    #     assert_msg: >
-    #       An error has occurred.
-    #       {% if "connect" in ansible_failed_result.msg | d('') %}Failed to connect to ESXi host{% endif %}
-    #       {% if "replace" in ansible_failed_result.msg | d('') %}Failed to change Machine SSL certificate.{% endif %}
+    - name: End all tasks for this host
+      ansible.builtin.meta: end_host
 
-    # - name: RC in case of failure
-    #   ansible.builtin.include_role:
-    #     name: ansible_role_returncode
-    #   vars:
-    #     rc_support: account
-    #     rc_group: framework_playbook
-    #     rc_number: 2200
-    #     rc_message: "{{ assert_msg }}"
-
-    # - name: Set exit flag
-    #   ansible.builtin.set_fact:
-    #     validate_rc_error: true
-    #   delegate_facts: true
-    #   delegate_to: localhost
-
-    # - name: End all tasks for this host
-    #   ansible.builtin.meta: end_host
-
-  # --- Step 3, re-add ESXi server to the vcenter
-
-# - name: Wait for ESXi API (HTTPS 443) to be up after reboot
-#   block:
-#     - name: Wait for ESXi API to be reachable
-#       ansible.builtin.wait_for:
-#         host: "{{ esxi_host }}"
-#         port: 443
-#         state: started
-#         delay: 20
-#         sleep: 10
-#         timeout: 240
-#       delegate_to: localhost
-#       become: false
+- name: Wait for ESXi API (HTTPS 443) to be up after reboot
+  block:
+    - name: Wait for ESXi API to be reachable
+      ansible.builtin.wait_for:
+        host: "{{ esxi_host }}"
+        port: 443
+        state: started
+        delay: 20
+        sleep: 10
+        timeout: 240
+      delegate_to: localhost
+      become: false
+      register: wait_for_out
 
 
-#   rescue:
-#     - name: Show error messsage
-#       ansible.builtin.debug:
-#         msg: "Error waiting for ESXi host to come online"
+  rescue:
+    - name: show error message
+      ansible.builtin.debug:
+        msg: "An error has occurred"
 
-#     - name: fail
-#       ansible.builtin.fail:
-#         msg: "Failed to wait for ESXi host to come online"
+    - name: Set error message
+      ansible.builtin.set_fact:
+        assert_msg: "Failed to wait for ESXi host to come online. {{ wait_for_out.msg }}"
 
-    # - name: Set error message
-    #   ansible.builtin.set_fact:
-    #     assert_msg: >
-    #       An error has occurred.
-    #       {% if "wait for" in ansible_failed_result.msg | d('') %}Timeout waiting for ESXi host to come online.{% endif %}
+    - name: RC in case of failure
+      ansible.builtin.include_role:
+        name: ansible_role_returncode
+      vars:
+        rc_support: account
+        rc_group: framework_playbook
+        rc_number: 4100
+        rc_message: "{{ assert_msg }}"
 
-    # - name: RC in case of failure
-    #   ansible.builtin.include_role:
-    #     name: ansible_role_returncode
-    #   vars:
-    #     rc_support: account
-    #     rc_group: framework_playbook
-    #     rc_number: 2200
-    #     rc_message: "{{ assert_msg }}"
+    - name: Set exit flag
+      ansible.builtin.set_fact:
+        validate_rc_error: true
+      delegate_facts: true
+      delegate_to: localhost
 
-    # - name: Set exit flag
-    #   ansible.builtin.set_fact:
-    #     validate_rc_error: true
-    #   delegate_facts: true
-    #   delegate_to: localhost
-
-    # - name: End all tasks for this host
-    #   ansible.builtin.meta: end_host
+    - name: End all tasks for this host
+      ansible.builtin.meta: end_host
 
 - name: re-add the ESXi to the vCenter
   block:
@@ -235,38 +233,31 @@
       register: esxi_add_out
 
   rescue:
-
-    - name: Show error messsage
+    - name: show error message
       ansible.builtin.debug:
-        msg: "Error re-adding esx"
+        msg: "An error has occurred"
 
-    - name: fail
-      ansible.builtin.fail:
-        msg: "Failed to add esx server"
+    - name: Set error message
+      ansible.builtin.set_fact:
+        assert_msg: "Failed to re-add the ESXi to the vCenter. {{ esxi_add_out.msg }}"
 
-    # - name: Set error message
-    #   ansible.builtin.set_fact:
-    #     assert_msg: >
-    #       An error has occurred.
-    #       {% if "re-add" in ansible_failed_result.msg | d('') %}Failed to re-add the ESXi to the vCenter{% endif %}
+    - name: RC in case of failure
+      ansible.builtin.include_role:
+        name: ansible_role_returncode
+      vars:
+        rc_support: account
+        rc_group: framework_playbook
+        rc_number: 5000
+        rc_message: "{{ assert_msg }}"
 
-    # - name: RC in case of failure
-    #   ansible.builtin.include_role:
-    #     name: ansible_role_returncode
-    #   vars:
-    #     rc_support: account
-    #     rc_group: framework_playbook
-    #     rc_number: 2200
-    #     rc_message: "{{ assert_msg }}"
+    - name: Set exit flag
+      ansible.builtin.set_fact:
+        validate_rc_error: true
+      delegate_facts: true
+      delegate_to: localhost
 
-    # - name: Set exit flag
-    #   ansible.builtin.set_fact:
-    #     validate_rc_error: true
-    #   delegate_facts: true
-    #   delegate_to: localhost
-
-    # - name: End all tasks for this host
-    #   ansible.builtin.meta: end_host
+    - name: End all tasks for this host
+      ansible.builtin.meta: end_host
 
 - name: Power on VMs
   block:
@@ -285,35 +276,30 @@
       register: power_on_out
 
   rescue:
-
-    - name: Show error messsage
+    - name: show error message
       ansible.builtin.debug:
-        msg: "Error while trying to power on vms"
+        msg: "An error has occurred"
 
-    - name: fail
-      ansible.builtin.fail:
-        msg: "Failed to power on vms"
+    - name: Set error message
+      ansible.builtin.set_fact:
+        assert_msg: "Failed to power on VMs. {{ power_on_out.msg }}"
 
-    # - name: Set error message
-    #   ansible.builtin.set_fact:
-    #     assert_msg: >
-    #       An error has occurred.
-    #       {% if "re-add" in ansible_failed_result.msg | d('') %}Failed to re-add the ESXi to the vCenter{% endif %}
+    - name: RC in case of failure
+      ansible.builtin.include_role:
+        name: ansible_role_returncode
+      vars:
+        rc_support: account
+        rc_group: framework_playbook
+        rc_number: 5100
+        rc_message: "{{ assert_msg }}"
 
-    # - name: RC in case of failure
-    #   ansible.builtin.include_role:
-    #     name: ansible_role_returncode
-    #   vars:
-    #     rc_support: account
-    #     rc_group: framework_playbook
-    #     rc_number: 2200
-    #     rc_message: "{{ assert_msg }}"
+    - name: Set exit flag
+      ansible.builtin.set_fact:
+        validate_rc_error: true
+      delegate_facts: true
+      delegate_to: localhost
 
-    # - name: Set exit flag
-    #   ansible.builtin.set_fact:
-    #     validate_rc_error: true
-    #   delegate_facts: true
-    #   delegate_to: localhost
+    - name: End all tasks for this host
+      ansible.builtin.meta: end_host
+    
 
-    # - name: End all tasks for this host
-    #   ansible.builtin.meta: end_host

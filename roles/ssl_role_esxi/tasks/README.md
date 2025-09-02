@@ -26,7 +26,7 @@ Variable | Default | Comments
 *esxi_cert_path* (String) | None | Path to the desired new certificate (PEM format), e.g., C:\path\to\ca_root.pem
 *target_datacenter* (String) | Set at runtime | Datacenter name used to re-add the host (captured during removal)
 *target_cluster* (String) |Set at runtime | Cluster name used to re-add the host (captured during removal)
-*vms_to_power_on* (array) | Set at runtime | Names of VMs powered off during the maintenance step, to be started after re-add.
+*vms_to_power_on* (Array) | Set at runtime | Names of VMs powered off during the maintenance step, to be started after re-add.
 
 
 
@@ -39,13 +39,14 @@ After the execution, the playbook will log a return code for each node to identi
 
 Return Code Group | Return Code | Comments
 ------------------|-------------|---------
-prerequisite | 1000 | Host is unreachable (server connectivity failed).
-prerequisite | 1001 | vCenter credentials missing or invalid.
-prerequisite | 1002 | Required certificate file(s) not found.
-vcenter_cert | 2000 | Failed to add CA root certificate to vCenter trust store.
-vcenter_cert | 2001 | Failed to replace Machine SSL certificate.
-vcenter_cert | 2002 | Unsupported vcenter_action specified.
-vcenter_cert | 2003 | General PowerCLI/PowerShell error during certificate operation.
+custom_mode | 1000 | Failed to set vCenter custom mode
+maintenance_mode | 2000 | Failed to enter maintenance mode.
+remove_host | 3000 | Filed to remove host from vCenter.
+replace_cert | 4000 | Failed to replace ESXi Machine certificate.
+wait_for_esxi_api | 4100 | Timeout waiting for ESXi HTTPS (443) to become available.
+re-add_host | 5000 | Failed to re-add ESXi host vCenter.
+power_on_vms | 5100 | Failed to power on all VMs.
+generic | 9000 | Unexpected/uncategorized failure.
 
 
 ## Procedure 
