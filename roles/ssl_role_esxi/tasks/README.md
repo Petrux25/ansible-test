@@ -9,7 +9,7 @@ This Ansible role is designed to automate the replacement of SSL certificates on
 3. Detaches the ESXi host from any vDS (if present) and remove it from vCenter, while capturing its Datacenter and Cluster location. 
 4. Replaces the ESXi Machine SSL certificate and reboot the host.
 5. Re-adds the host to the original vCenter location.
-6. Power on the VMs that were shut down in step 2. 
+6. Power on the VMs that were shut down in step 2.
 
 ## Known limitations
 
