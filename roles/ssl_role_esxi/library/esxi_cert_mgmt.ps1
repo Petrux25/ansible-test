@@ -526,7 +526,10 @@ function Start-VMs{
     # --- Set vCenter in modo custom ---
     if ($esxi_action -eq "custom_mode") {
         try {
-            Set-VCenterCertMode -module $module -vcenter_server $vcenter_server -vcenter_user $vcenter_user -vcenter_password $vcenter_password  
+            Set-VCenterCertMode -module $module 
+            -vcenter_server $vcenter_server 
+            -vcenter_user $vcenter_user 
+            -vcenter_password $vcenter_password  
         } catch {
             Exit-Json $module
         }
@@ -535,7 +538,11 @@ function Start-VMs{
     # --- ESX in maintenance mode ---
     elseif ($esxi_action -eq "maintenance") {
         try {
-            Enter-MaintenanceMode -module $module -vcenter_server $vcenter_server -vcenter_user $vcenter_user -vcenter_password $vcenter_password -esxi_host $esxi_host
+            Enter-MaintenanceMode -module $module 
+            -vcenter_server $vcenter_server 
+            -vcenter_user $vcenter_user 
+            -vcenter_password $vcenter_password 
+            -esxi_host $esxi_host
         }
         catch {
             Exit-Json $module
@@ -612,10 +619,10 @@ function Start-VMs{
     }
     elseif ($esxi_action -eq "re-connect") {
         try {
-            
+        
         }
         catch {
-            <#Do this if a terminating exception happens#>
+            
         }
     }
     else {

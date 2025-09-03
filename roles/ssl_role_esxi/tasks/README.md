@@ -11,6 +11,12 @@ This Ansible role is designed to automate the replacement of SSL certificates on
 5. Re-adds the host to the original vCenter location.
 6. Power on the VMs that were shut down in step 2. 
 
+## Known limitations
+
+- vSphere Distributed Switches
+
+It is important to consider that the host's management network, including its primary VMkernel adapter, must be configured on a vSphere Standard Switch. This automation won't be able to remove the ESXi host from vCenter if the management network is on a vSphere Distributed Switch (VDS), as it does not handle the VDS migration. Attempting to run this on a VDS-managed host will require manual intervention.
+
 ## Variables 
 
 This section describes all variables that can be used with this Ansible role. Each variable is listed below with its name, type, default value and a description of its purpose. 
