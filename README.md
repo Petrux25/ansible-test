@@ -4,6 +4,48 @@
 
 This Ansible role is designed to automate the management of SSL certificates on a VMWare vCenter server. It connects with to the vCenter instance, validates connectivity, installs a specified CA root certificate into the trusted certificate store, and replaces the Machine SSL certificate with a new one provided by the user.
 
+## Known limitations
+
+- Certificate Sign Request limitation
+
+It is important to highlight that this automation requires the SSL certificate to originate from a very specific workflow. The Certificate Signing Request (CSR) must be generated directly from vCenter, either through the vCenter UI or via PowerCLI commands (e.g., `New-VIMachineCertificateSigningRequest`). This step is critical because it ensures the corresponding private key is created and stored locally on the host. The automation script installs the public certificate and relies on the host already possessing the matching private key. Furthermore, when having the CSR signed by a Certificate Authority (CA), it is vital to use a valid Certificate Template, this ensures the certificate is issued with the required Extended Key Usages (EKU), such as "Server Authentication" and "Client Authentication", for full compatibility. Using a certificate generated externally (where the private key does not reside on the host) will cause the replacement step to fail.
+
+Example: Generating a CSR using PowerCLI
+
+The following PowerCLI script demonstrates how to generate a CSR for a vCenter Server Server.
+
+* Procedure
+
+Step 1: Connect to your vCenter Server
+Open a PowerShell terminal with the VMware PowerCLI module loaded and connect to the vCenter Server.
+
+Connect-VIServer -Server 'vcenter01.local.com' -User 'administrator@vsphere.local' -Password 'YourPassword'
+
+Step 2: Define the Certificate Details
+Create a hashtable with the information for your certificate. 
+
+$csrParams = @{
+    Country          = "US"
+    Email            = "it-adm@company.com"
+    Locality         = "San Francisco"
+    Organization     = "My Company"
+    OrganizationUnit = "IT Infrastructure"
+    StateOrProvince  = "California"
+}
+
+Step 3: Generate the CSR
+
+Execute the New-VIMachineCertificateSigningRequest cmdlet with the parameters you defined. This command instructs the ESXi host to generate a new private key and a CSR. The CSR is then returned to your PowerCLI session.
+
+$csr = New-VIMachineCertificateSigningRequest @csrParams
+
+Step 4: Save the CSR to a File
+The generated CSR is a block of Base64-encoded text. Save it to a .pem or .csr file. This is the file you will submit to your Certificate Authority (CA) for signing.
+
+$csr.CertificateRequestPEM | Out-File "C:Users\downloads\vcenter.csr.pem" -Force
+
+After completing these steps, you will have the vcenter.csr.pem file ready to be signed. Once your CA returns the signed certificate, ensure it includes the full chain of trust and use that file as the input for the ca_cert_path variable in the Ansible role.
+
 ## Variables 
 
 This section describes all variables that can be used with this Ansible role. Each variable is listed below with its name, type, default value and a description of its purpose. 

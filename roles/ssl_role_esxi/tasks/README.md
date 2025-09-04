@@ -13,9 +13,58 @@ This Ansible role is designed to automate the replacement of SSL certificates on
 
 ## Known limitations
 
+- Certificate Sign Request limitation
+
+It is important to highlight that this automation requires the SSL certificate to originate from a very specific workflow. The Certificate Signing Request (CSR) must be generated directly from vCenter, either through the vCenter UI or via PowerCLI commands (e.g., `New-VIMachineCertificateSigningRequest`). This step is critical because it ensures the corresponding private key is created and stored locally on the host. The automation script installs the public certificate and relies on the host already possessing the matching private key. Furthermore, when having the CSR signed by a Certificate Authority (CA), it is vital to use a valid Certificate Template, this ensures the certificate is issued with the required Extended Key Usages (EKU), such as "Server Authentication" and "Client Authentication", for full compatibility. Using a certificate generated externally (where the private key does not reside on the host) will cause the replacement step to fail.
+
+Example: Generating a CSR using PowerCLI
+
+The following PowerCLI script demonstrates how to generate a CSR for a specific ESXi host managed by a vCenter Server.
+
+To comply with the automation's requirements, the Certificate Signing Request (CSR) must be generated from the ESXi host itself. This ensures the private key is created and stored on the host, which is essential for the certificate replacement process.
+
+The following PowerCLI script demonstrates how to generate a CSR for a specific ESXi host managed by a vCenter Server.
+
+* Procedure
+
+Step 1: Connect to your vCenter Server
+Open a PowerShell terminal with the VMware PowerCLI module loaded and connect to the vCenter Server that manages your ESXi host.
+
+Connect-VIServer -Server 'vcenter01.local.com' -User 'administrator@vsphere.local' -Password 'YourPassword'
+
+Step 2: Define the Certificate Details 
+
+Create a hashtable with the information for your certificate. The CommonName is the most critical field and must match the Fully Qualified Domain Name (FQDN) of your ESXi host.
+
+Get the ESXi host object from vCenter
+
+$targetHost = Get-VMHost -Name 'esx01.yourdomain.com'
+
+Define all the subject details for the certificate
+
+$esxRequest = New-VIMachineCertificateSigningRequest `
+    -VMHost $vmhost `
+    -Country "US" `
+    -Locality "San Francisco" `
+    -Organization "My Company" `
+    -OrganizationUnit "PowerCLI" `
+    -StateOrProvince "California" `
+    -CommonName "esx01.yourdomain.com"
+
+Step 3: Save the CSR to a File
+The generated CSR is a block of Base64-encoded text. Save it to a .pem or .csr file. This is the file you will submit to your Certificate Authority (CA) for signing.
+
+$esxRequest.CertificateRequestPEM | Out-File "C:Users\certs\esx01.csr.pem" -Force
+
+
+
+After completing these steps, you will have the esx01.csr.pem file ready to be signed. Once your CA returns the signed certificate, ensure it includes the full chain of trust and use that file as the input for the esxi_cert_path variable in the Ansible role.
+
+
 - vSphere Distributed Switches
 
 It is important to consider that the host's management network, including its primary VMkernel adapter, must be configured on a vSphere Standard Switch. This automation won't be able to remove the ESXi host from vCenter if the management network is on a vSphere Distributed Switch (VDS), as it does not handle the VDS migration. Attempting to run this on a VDS-managed host will require manual intervention.
+
 
 ## Variables 
 
